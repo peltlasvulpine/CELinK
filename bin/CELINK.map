@@ -4,7 +4,7 @@ Merging object attributes
 
 Discarded input sections
 
- .comment       0x00000000       0xdf obj/CELINK.o
+ .comment       0x00000000      0x14f obj/CELINK.o
  .note.GNU-stack
                 0x00000000        0x0 obj/CELINK.o
  .init.weak_crt
@@ -36,67 +36,212 @@ Linker script and memory map
  .header.icon   0x00d1a882        0xc obj/CELINK.o
                 0x00d1a887                ___description
 
-.init           0x00d1a88e       0xe0
+.init           0x00d1a88e      0x107
  *(.init)
- .init          0x00d1a88e       0xe0 obj/crt0.o
+ .init          0x00d1a88e      0x107 obj/crt0.o
                 0x00d1a88e                __start
                 0x00d1a8eb                __libload_library_KEYPADC
                 0x00d1a8f5                _kb_Scan
-                0x00d1a932                ___exithl
-                0x00d1a933                _exit.sp
+                0x00d1a8f9                __libload_library_USBDRVCE
+                0x00d1a904                _usb_Init
+                0x00d1a908                _usb_Cleanup
+                0x00d1a90c                _usb_PollTransfers
+                0x00d1a910                _usb_HandleEvents
+                0x00d1a914                _usb_FindDevice
+                0x00d1a918                _usb_GetDeviceEndpoint
+                0x00d1a91c                _usb_ScheduleControlTransfer
+                0x00d1a959                ___exithl
+                0x00d1a95a                _exit.sp
 
-.text           0x00d1a96e       0x46
+.text           0x00d1a995     0x2203
  *(.text.unlikely .text.*_unlikely .text.unlikely.*)
  *(.text.exit .text.exit.*)
  *(.text.startup .text.startup.*)
  *(.text.hot .text.hot.*)
  *(SORT_BY_NAME(.text.sorted.*))
  *(.text .stub .text.* .gnu.linkonce.t.*)
- .text._main    0x00d1a96e       0x46 obj/CELINK.o
-                0x00d1a96e                _main
+ .text          0x00d1a995      0x415 obj/CELINK.o
+                0x00d1a995                __land
+                0x00d1a999                __iand
+                0x00d1a9b0                __dcmp
+                0x00d1aa0e                __frameset
+                0x00d1aa1c                __frameset0
+                0x00d1aa27                __ftod
+                0x00d1aa6f                __imuls
+                0x00d1aa6f                __imulu
+                0x00d1aa9f                __sshl
+                0x00d1aa9f                __ishl
+                0x00d1aac5                __ishru
+                0x00d1aaca                __ishrs
+                0x00d1ab06                __lladd
+                0x00d1ab2a                __lland
+                0x00d1ab66                __llcmps
+                0x00d1ab93                __llcmpu
+                0x00d1abbd                __llcmpzero
+                0x00d1abbd                __llequzero
+                0x00d1abd2                __lldivu
+                0x00d1abe6                __lldvrmu
+                0x00d1abed                __lldvrmu.hijack
+                0x00d1ac44                __llmulu
+                0x00d1ac99                __llshl
+                0x00d1acb3                __llshru
+                0x00d1ace3                __llshrs
+                0x00d1ad1f                __llxor
+                0x00d1ad5b                __sand
+                0x00d1ad64                __setflag
+                0x00d1ad6e                __lxor
+                0x00d1ad72                __ixor
+                0x00d1ad89                _memcpy
+ .text._celink_init
+                0x00d1adaa       0x78 obj/CELINK.o
+                0x00d1adaa                _celink_init
+ .text._celink_usb_event
+                0x00d1ae22      0x122 obj/CELINK.o
+ .text._celink_transfer_callback
+                0x00d1af44       0x82 obj/CELINK.o
+ .text._celink_process
+                0x00d1afc6       0x11 obj/CELINK.o
+                0x00d1afc6                _celink_process
+ .text._celink_disconnect
+                0x00d1afd7       0x1e obj/CELINK.o
+                0x00d1afd7                _celink_disconnect
+ .text._main    0x00d1aff5      0x1db obj/CELINK.o
+                0x00d1aff5                _main
+ .text._npf_vpprintf
+                0x00d1b1d0     0x1775 obj/CELINK.o
+                0x00d1b1d0                _npf_vpprintf
+ .text._NPF_PUTC_IMPL
+                0x00d1c945       0x2d obj/CELINK.o
+ .text._npf_utoa_rev
+                0x00d1c972       0xe6 obj/CELINK.o
+ .text._vsnprintf
+                0x00d1ca58       0x88 obj/CELINK.o
+                0x00d1ca58                _vsnprintf
+ .text._npf_bufputc
+                0x00d1cae0       0x25 obj/CELINK.o
+ .text._npf_bufputc_nop
+                0x00d1cb05        0x7 obj/CELINK.o
+ .text._sprintf
+                0x00d1cb0c       0x29 obj/CELINK.o
+                0x00d1cb0c                _sprintf
+ .text.__bctlz  0x00d1cb35       0x22 obj/CELINK.o
+                0x00d1cb35                __bctlz
+ .text.__sctlz  0x00d1cb57        0xc obj/CELINK.o
+                0x00d1cb57                __sctlz
+ .text.__ictlz  0x00d1cb63       0x12 obj/CELINK.o
+                0x00d1cb63                __ictlz
+ .text.__llctlz
+                0x00d1cb75        0xe obj/CELINK.o
+                0x00d1cb75                __llctlz
+ .text.__i48ctlz
+                0x00d1cb83       0x15 obj/CELINK.o
+                0x00d1cb83                __i48ctlz
  *(.gnu.warning)
 
-.rodata         0x00d1a9b4       0x47
+.rodata         0x00d1cb98      0x198
  *(.rodata .rodata.* .gnu.linkonce.r.*)
- .rodata._.str  0x00d1a9b4       0x10 obj/CELINK.o
+ .rodata._.str  0x00d1cb98       0x11 obj/CELINK.o
  .rodata._.str.1
-                0x00d1a9c4       0x15 obj/CELINK.o
+                0x00d1cba9        0xd obj/CELINK.o
+ .rodata._.str.2
+                0x00d1cbb6       0x17 obj/CELINK.o
+ .rodata._.str.3
+                0x00d1cbcd        0x7 obj/CELINK.o
+ .rodata._.str.4
+                0x00d1cbd4       0x11 obj/CELINK.o
+ .rodata._.str.5
+                0x00d1cbe5        0x8 obj/CELINK.o
+ .rodata._.str.6
+                0x00d1cbed        0x9 obj/CELINK.o
+ .rodata._.str.7
+                0x00d1cbf6        0x9 obj/CELINK.o
+ .rodata._.str.8
+                0x00d1cbff        0xd obj/CELINK.o
+ .rodata._npf_vpprintf
+                0x00d1cc0c      0x102 obj/CELINK.o
  .rodata.libload
-                0x00d1a9d9       0x22 obj/crt0.o
+                0x00d1cd0e       0x22 obj/crt0.o
 
-.init_array     0x00d1a9fb        0x0
+.init_array     0x00d1cd30        0x0
                 [!provide]                        PROVIDE (__init_array_start = .)
  *(.preinit_array)
  *(SORT_BY_INIT_PRIORITY(.init_array.*))
  *(.init_array)
                 [!provide]                        PROVIDE (__init_array_end = .)
 
-.fini_array     0x00d1a9fb        0x0
+.fini_array     0x00d1cd30        0x0
                 [!provide]                        PROVIDE (__fini_array_start = .)
  *(SORT_BY_INIT_PRIORITY(.fini_array.*))
  *(.fini_array)
                 [!provide]                        PROVIDE (__fini_array_end = .)
-                0x00d1a9fb                        ___data_low = .
+                0x00d1cd30                        ___data_low = .
 
-.data           0x00d1a9fb        0x0
+.data           0x00d1cd30        0x0
  *(.data .data.* .gnu.linkonce.d.*)
  *(.data1)
-                0x00d1a9fb                        ___runprgm_reloc_start = .
+                0x00d1cd30                        ___runprgm_reloc_start = .
  *(.runprgm.reloc)
-                0x00d1a9fb                        ___runprgm_reloc_end = .
-                0x00d1a9fb                        ___data_high = .
+                0x00d1cd30                        ___runprgm_reloc_end = .
+                0x00d1cd30                        ___data_high = .
                 0x00000000                        ___data_len = (___data_high - ___data_low)
                 0x00d052c6                        . = BSSHEAP_LOW
                 0x00d052c6                        ___bss_low = .
 
-.bss
+.bss            0x00d052c6      0x12d
  *(.dynbss)
  *(.bss .bss.* .gnu.linkonce.b.*)
+ .bss._last_wValue
+                0x00d052c6        0x3 obj/CELINK.o
+                0x00d052c6                _last_wValue
+ .bss._last_wIndex
+                0x00d052c9        0x3 obj/CELINK.o
+                0x00d052c9                _last_wIndex
+ .bss._schedule_error
+                0x00d052cc        0x3 obj/CELINK.o
+                0x00d052cc                _schedule_error
+ .bss._message_buffer
+                0x00d052cf      0x100 obj/CELINK.o
+ .bss._message_ready
+                0x00d053cf        0x1 obj/CELINK.o
+ .bss._transfer_pending
+                0x00d053d0        0x1 obj/CELINK.o
+ .bss._usb_initialized
+                0x00d053d1        0x1 obj/CELINK.o
+ .bss._setup_seen
+                0x00d053d2        0x3 obj/CELINK.o
+                0x00d053d2                _setup_seen
+ .bss._last_bmRequestType
+                0x00d053d5        0x3 obj/CELINK.o
+                0x00d053d5                _last_bmRequestType
+ .bss._last_bRequest
+                0x00d053d8        0x3 obj/CELINK.o
+                0x00d053d8                _last_bRequest
+ .bss._last_wLength
+                0x00d053db        0x3 obj/CELINK.o
+                0x00d053db                _last_wLength
+ .bss._transfer_scheduled
+                0x00d053de        0x3 obj/CELINK.o
+                0x00d053de                _transfer_scheduled
+ .bss._transfer_completed
+                0x00d053e1        0x3 obj/CELINK.o
+                0x00d053e1                _transfer_completed
+ .bss._last_status
+                0x00d053e4        0x3 obj/CELINK.o
+                0x00d053e4                _last_status
+ .bss._last_transferred
+                0x00d053e7        0x3 obj/CELINK.o
+                0x00d053e7                _last_transferred
+ .bss._pc_cnt.0
+                0x00d053ea        0x3 obj/CELINK.o
+ .bss._pc_cnt.1
+                0x00d053ed        0x3 obj/CELINK.o
+ .bss._pc_cnt.2
+                0x00d053f0        0x3 obj/CELINK.o
  *(COMMON)
-                0x00d052c6                        ___bss_high = .
-                0x00000000                        ___bss_len = (___bss_high - ___bss_low)
+                0x00d053f3                        ___bss_high = .
+                0x0000012d                        ___bss_len = (___bss_high - ___bss_low)
                 0x00000001                        ASSERT ((. <= BSSHEAP_HIGH), Error: BSS exceed BSSHEAP_HIGH limit)
-                0x00d052c6                        ___heap_low = .
+                0x00d053f3                        ___heap_low = .
                 0x00d13fd8                        . = BSSHEAP_HIGH
                 0x00d13fd8                        ___heap_high = .
 
