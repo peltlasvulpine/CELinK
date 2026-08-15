@@ -2,10 +2,11 @@
 # Makefile Options
 # ----------------------------
 
-NAME = DEMO
-ICON = icon.png
-DESCRIPTION = "CE C Toolchain Demo"
-COMPRESSED = NO
+NAME = CELINK
+# Not yet
+#ICON = icon.png
+DESCRIPTION = "CELinK"
+COMPRESSED = YES
 
 CFLAGS = -Wall -Wextra -Oz
 CXXFLAGS = -Wall -Wextra -Oz

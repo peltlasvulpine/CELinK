@@ -1,19 +1,26 @@
 #include <ti/screen.h>
-#include <ti/getcsc.h>
-#include <stdlib.h>
+#include <keypadc.h>
+#include "celink.h"
 
-/* Main function, called first */
 int main(void)
 {
-    /* Clear the homescreen */
     os_ClrHome();
 
-    /* Print a string */
-    os_PutStrFull("Hello, World.");
+    celink_init();
 
-    /* Waits for a key */
-    while (!os_GetCSC());
+    os_PutStrFull("CELinK says hi!");
+    os_NewLine();
+    os_PutStrFull("Press CLEAR to quit.");
 
-    /* Return 0 for success */
+    while (1)
+    {
+        kb_Scan();
+
+        if (kb_IsDown(kb_KeyClear))
+            break;
+    }
+
+    celink_disconnect();
+
     return 0;
 }
