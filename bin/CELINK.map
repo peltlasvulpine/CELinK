@@ -1,0 +1,222 @@
+
+Merging object attributes
+
+
+Discarded input sections
+
+ .comment       0x00000000       0xdf obj/CELINK.o
+ .note.GNU-stack
+                0x00000000        0x0 obj/CELINK.o
+ .init.weak_crt
+                0x00000000       0x10 obj/CELINK.o
+ .text          0x00000000        0x0 obj/crt0.o
+ .data          0x00000000        0x0 obj/crt0.o
+ .bss           0x00000000        0x0 obj/crt0.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+prgm             0x00d1a87f         0x00400000
+bss              0x00d052c6         0x0000ed12
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+                0x00d1a87f                        LOAD_ADDR = 0xd1a87f
+                0x00d052c6                        BSSHEAP_LOW = 0xd052c6
+                0x00d13fd8                        BSSHEAP_HIGH = 0xd13fd8
+                0x00d1a87e                        STACK_HIGH = 0xd1a87e
+                0x00000001                        __TICE__ = 0x1
+                0x00d1a87f                        . = LOAD_ADDR
+
+.header         0x00d1a87f        0xf
+ *(.header)
+ .header        0x00d1a87f        0x3 obj/crt0.o
+ *(.header.icon)
+ .header.icon   0x00d1a882        0xc obj/CELINK.o
+                0x00d1a887                ___description
+
+.init           0x00d1a88e       0xe0
+ *(.init)
+ .init          0x00d1a88e       0xe0 obj/crt0.o
+                0x00d1a88e                __start
+                0x00d1a8eb                __libload_library_KEYPADC
+                0x00d1a8f5                _kb_Scan
+                0x00d1a932                ___exithl
+                0x00d1a933                _exit.sp
+
+.text           0x00d1a96e       0x46
+ *(.text.unlikely .text.*_unlikely .text.unlikely.*)
+ *(.text.exit .text.exit.*)
+ *(.text.startup .text.startup.*)
+ *(.text.hot .text.hot.*)
+ *(SORT_BY_NAME(.text.sorted.*))
+ *(.text .stub .text.* .gnu.linkonce.t.*)
+ .text._main    0x00d1a96e       0x46 obj/CELINK.o
+                0x00d1a96e                _main
+ *(.gnu.warning)
+
+.rodata         0x00d1a9b4       0x47
+ *(.rodata .rodata.* .gnu.linkonce.r.*)
+ .rodata._.str  0x00d1a9b4       0x10 obj/CELINK.o
+ .rodata._.str.1
+                0x00d1a9c4       0x15 obj/CELINK.o
+ .rodata.libload
+                0x00d1a9d9       0x22 obj/crt0.o
+
+.init_array     0x00d1a9fb        0x0
+                [!provide]                        PROVIDE (__init_array_start = .)
+ *(.preinit_array)
+ *(SORT_BY_INIT_PRIORITY(.init_array.*))
+ *(.init_array)
+                [!provide]                        PROVIDE (__init_array_end = .)
+
+.fini_array     0x00d1a9fb        0x0
+                [!provide]                        PROVIDE (__fini_array_start = .)
+ *(SORT_BY_INIT_PRIORITY(.fini_array.*))
+ *(.fini_array)
+                [!provide]                        PROVIDE (__fini_array_end = .)
+                0x00d1a9fb                        ___data_low = .
+
+.data           0x00d1a9fb        0x0
+ *(.data .data.* .gnu.linkonce.d.*)
+ *(.data1)
+                0x00d1a9fb                        ___runprgm_reloc_start = .
+ *(.runprgm.reloc)
+                0x00d1a9fb                        ___runprgm_reloc_end = .
+                0x00d1a9fb                        ___data_high = .
+                0x00000000                        ___data_len = (___data_high - ___data_low)
+                0x00d052c6                        . = BSSHEAP_LOW
+                0x00d052c6                        ___bss_low = .
+
+.bss
+ *(.dynbss)
+ *(.bss .bss.* .gnu.linkonce.b.*)
+ *(COMMON)
+                0x00d052c6                        ___bss_high = .
+                0x00000000                        ___bss_len = (___bss_high - ___bss_low)
+                0x00000001                        ASSERT ((. <= BSSHEAP_HIGH), Error: BSS exceed BSSHEAP_HIGH limit)
+                0x00d052c6                        ___heap_low = .
+                0x00d13fd8                        . = BSSHEAP_HIGH
+                0x00d13fd8                        ___heap_high = .
+
+.runprgm
+ *(.runprgm.reloc)
+
+.debug_info
+ *(.debug_info .debug_info.*)
+
+.debug_abbrev
+ *(.debug_abbrev .debug_abbrev.*)
+
+.debug_line
+ *(.debug_line .debug_line.*)
+
+.debug_line_str
+ *(.debug_line_str .debug_line_str.*)
+
+.debug_str
+ *(.debug_str .debug_str.*)
+
+.debug_str_offsets
+ *(.debug_str_offsets .debug_str_offsets.*)
+
+.debug_addr
+ *(.debug_addr .debug_addr.*)
+
+.debug_aranges
+ *(.debug_aranges .debug_aranges.*)
+
+.debug_ranges
+ *(.debug_ranges .debug_ranges.*)
+
+.debug_rnglists
+ *(.debug_rnglists .debug_rnglists.*)
+
+.debug_loc
+ *(.debug_loc .debug_loc.*)
+
+.debug_loclists
+ *(.debug_loclists .debug_loclists.*)
+
+.debug_frame
+ *(.debug_frame .debug_frame.*)
+
+.debug_macro
+ *(.debug_macro .debug_macro.*)
+
+.debug_macinfo
+ *(.debug_macinfo .debug_macinfo.*)
+
+.debug_names
+ *(.debug_names .debug_names.*)
+
+.debug_pubnames
+ *(.debug_pubnames .debug_pubnames.*)
+
+.debug_pubtypes
+ *(.debug_pubtypes .debug_pubtypes.*)
+
+.debug_types
+ *(.debug_types .debug_types.*)
+
+.debug_sup
+ *(.debug_sup .debug_sup.*)
+
+.debug_cu_index
+ *(.debug_cu_index .debug_cu_index.*)
+
+.debug_tu_index
+ *(.debug_tu_index .debug_tu_index.*)
+
+.gdb_index
+ *(.gdb_index)
+
+.debug_gdb_scripts
+ *(.debug_gdb_scripts)
+
+.debug_abbrev.dwo
+ *(.debug_abbrev.dwo .debug_abbrev.dwo.*)
+
+.debug_info.dwo
+ *(.debug_info.dwo .debug_info.dwo.*)
+
+.debug_line.dwo
+ *(.debug_line.dwo .debug_line.dwo.*)
+
+.debug_loclists.dwo
+ *(.debug_loclists.dwo .debug_loclists.dwo.*)
+
+.debug_macro.dwo
+ *(.debug_macro.dwo .debug_macro.dwo.*)
+
+.debug_rnglists.dwo
+ *(.debug_rnglists.dwo .debug_rnglists.dwo.*)
+
+.debug_str.dwo
+ *(.debug_str.dwo .debug_str.dwo.*)
+
+.debug_str_offsets.dwo
+ *(.debug_str_offsets.dwo .debug_str_offsets.dwo.*)
+
+.eh_frame
+ *(.eh_frame)
+
+.eh_frame_hdr
+ *(.eh_frame_hdr)
+
+/DISCARD/
+ *(.comment)
+ *(.note*)
+                [!provide]                        PROVIDE (___runprgm_reloc_len = (___runprgm_reloc_end - ___runprgm_reloc_start))
+LOAD obj/CELINK.o
+LOAD obj/crt0.o
+START GROUP
+LOAD /opt/ce-toolchain-bin/lib/libc/allocator_standard.a
+LOAD /opt/ce-toolchain-bin/lib/crt/libcrt.a
+LOAD /opt/ce-toolchain-bin/lib/ce/libce.a
+LOAD /opt/ce-toolchain-bin/lib/softfloat/libsoftfloat.a
+LOAD /opt/ce-toolchain-bin/lib/libc/libc_os.a
+LOAD /opt/ce-toolchain-bin/lib/libcxx/libcxx.a
+END GROUP
+OUTPUT(bin/CELINK.obj elf32-z80)
