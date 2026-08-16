@@ -85,7 +85,21 @@ int main(void)
 
             os_NewLine();
             os_NewLine();
-            os_PutStrFull("CLEAR = QUIT");
+            os_PutStrFull("ENTER = REPLY");
+        }
+
+        if (kb_IsDown(kb_KeyEnter))
+        {
+            if (celink_send("hello from CELinK"))
+            {
+                os_ClrHome();
+
+                os_PutStrFull("REPLY QUEUED");
+                os_NewLine();
+                os_NewLine();
+
+                os_PutStrFull("Waiting for PC...");
+            }
         }
 
         if (kb_IsDown(kb_KeyClear))

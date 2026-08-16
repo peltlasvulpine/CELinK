@@ -1,16 +1,26 @@
 #!/usr/bin/env python3
 
 import sys
+import time
+
 import usb.core
 import usb.util
+
 
 VID = 0x0451
 PID = 0xE008
 
-REQUEST_TYPE = 0x40
+REQUEST_TYPE_OUT = 0x40
 REQUEST_SEND_MESSAGE = 0x01
 
+REQUEST_TYPE_IN = 0xC0
+REQUEST_GET_RESPONSE = 0x02
+
 MAX_MESSAGE = 255
+
+RESPONSE_TIMEOUT = 30.0
+POLL_TIMEOUT = 100
+POLL_INTERVAL = 0.05
 
 
 def find_calculator():
@@ -34,40 +44,113 @@ def find_calculator():
 def send_message(dev, message):
     data = message.encode("utf-8")
 
+    if len(data) == 0:
+        raise ValueError("Message cannot be empty")
+
     if len(data) > MAX_MESSAGE:
         raise ValueError(
             f"Message is too long ({len(data)} bytes, max {MAX_MESSAGE})"
         )
 
-    if len(data) == 0:
-        raise ValueError("Message cannot be empty")
-
-    # Force the data into a mutable byte buffer.
     data = bytearray(data)
 
     print()
-    print("Sending CELinK request:")
-    print(f"  bmRequestType = 0x{REQUEST_TYPE:02X}")
+    print("PC -> CALCULATOR")
+    print(f"  bmRequestType = 0x{REQUEST_TYPE_OUT:02X}")
     print(f"  bRequest      = 0x{REQUEST_SEND_MESSAGE:02X}")
-    print(f"  wValue        = 0")
-    print(f"  wIndex        = 0")
+    print("  wValue        = 0")
+    print("  wIndex        = 0")
     print(f"  wLength       = {len(data)}")
-    print(f"  data          = {data!r}")
+    print(f"  data          = {bytes(data)!r}")
     print(f"  hex           = {bytes(data).hex(' ')}")
     print()
 
-    # PyUSB uses the length of the supplied byte buffer as wLength.
     transferred = dev.ctrl_transfer(
-        bmRequestType=REQUEST_TYPE,
-        bRequest=REQUEST_SEND_MESSAGE,
-        wValue=0,
-        wIndex=0,
-        data_or_wLength=data,
+        REQUEST_TYPE_OUT,
+        REQUEST_SEND_MESSAGE,
+        0,
+        0,
+        data,
         timeout=1000,
     )
 
-    print(f"Sent: {message!r}")
-    print(f"USB reported {transferred} bytes transferred")
+    print(f"Sent {transferred} bytes.")
+
+
+def wait_for_response(dev):
+    print()
+    print("CALCULATOR -> PC")
+    print("Waiting for calculator response...")
+    print("Press ENTER on the calculator.")
+    print()
+
+    deadline = time.monotonic() + RESPONSE_TIMEOUT
+    polls = 0
+
+    while time.monotonic() < deadline:
+        polls += 1
+
+        try:
+            response = dev.ctrl_transfer(
+                REQUEST_TYPE_IN,
+                REQUEST_GET_RESPONSE,
+                0,
+                0,
+                MAX_MESSAGE,
+                timeout=POLL_TIMEOUT,
+            )
+
+            if response:
+                data = bytes(response)
+
+                print()
+                print("CALCULATOR REPLIED!")
+                print(f"  poll  = {polls}")
+                print(f"  bytes = {len(data)}")
+                print(f"  hex   = {data.hex(' ')}")
+
+                try:
+                    message = data.decode("utf-8")
+                except UnicodeDecodeError:
+                    message = data.decode(
+                        "utf-8",
+                        errors="replace"
+                    )
+
+                print(f"  text  = {message!r}")
+                print()
+
+                return message
+
+            print(
+                f"Poll {polls}: "
+                "calculator has no response yet."
+            )
+
+        except usb.core.USBTimeoutError:
+            # This is expected while the calculator has nothing queued.
+            print(
+                f"Poll {polls}: "
+                "timeout, no response yet."
+            )
+
+        except usb.core.USBError as e:
+            print()
+            print("!!! USB ERROR WHILE POLLING !!!")
+            print(f"  error = {e}")
+            print(f"  errno = {getattr(e, 'errno', None)}")
+            print(
+                "  backend_error_code = "
+                f"{getattr(e, 'backend_error_code', None)}"
+            )
+            print()
+            return None
+
+        time.sleep(POLL_INTERVAL)
+
+    print()
+    print("Timed out waiting for calculator response.")
+    return None
 
 
 def main():
@@ -85,13 +168,30 @@ def main():
     try:
         send_message(dev, message)
 
+        response = wait_for_response(dev)
+
+        if response is None:
+            return 1
+
     except usb.core.USBError as e:
-        print(f"USB error: {e}")
+        print()
+        print("!!! USB ERROR !!!")
+        print(f"error = {e}")
+        print(f"errno = {getattr(e, 'errno', None)}")
+        print(
+            "backend_error_code = "
+            f"{getattr(e, 'backend_error_code', None)}"
+        )
         return 1
 
     except ValueError as e:
         print(f"Error: {e}")
         return 1
+
+    except KeyboardInterrupt:
+        print()
+        print("Interrupted")
+        return 130
 
     except Exception as e:
         print(f"Unexpected error: {e}")

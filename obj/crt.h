@@ -50,6 +50,10 @@ _usb_GetDeviceEndpoint:
 	.type _usb_ScheduleControlTransfer, @function
 _usb_ScheduleControlTransfer:
 	jp 126
+	.global _usb_ScheduleTransfer
+	.type _usb_ScheduleTransfer, @function
+_usb_ScheduleTransfer:
+	jp 129
 .endm
 #endif
 #define HAS_LIBLOAD 1

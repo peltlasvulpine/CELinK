@@ -11,4 +11,7 @@ void celink_process(void);
 bool celink_message_available(void);
 const char *celink_get_message(void);
 
+bool celink_response_pending(void);
+bool celink_send(const char *message);
+
 #endif
