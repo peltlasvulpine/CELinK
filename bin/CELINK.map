@@ -59,7 +59,7 @@ Linker script and memory map
                 0x00d1a978                ___exithl
                 0x00d1a979                _exit.sp
 
-.text           0x00d1a9b4     0x2821
+.text           0x00d1a9b4     0x27db
  *(.text.unlikely .text.*_unlikely .text.unlikely.*)
  *(.text.exit .text.exit.*)
  *(.text.startup .text.startup.*)
@@ -118,145 +118,143 @@ Linker script and memory map
  .text._celink_disconnect
                 0x00d1b112       0x41 obj/CELINK.o
                 0x00d1b112                _celink_disconnect
- .text._main    0x00d1b153      0x55d obj/CELINK.o
+ .text._main    0x00d1b153      0x517 obj/CELINK.o
                 0x00d1b153                _main
  .text._draw_menu
-                0x00d1b6b0       0xab obj/CELINK.o
+                0x00d1b66a       0xab obj/CELINK.o
  .text._show_result
-                0x00d1b75b       0x7b obj/CELINK.o
+                0x00d1b715       0x7b obj/CELINK.o
  .text._wait_for_any_key
-                0x00d1b7d6        0xf obj/CELINK.o
+                0x00d1b790        0xf obj/CELINK.o
  .text._npf_vpprintf
-                0x00d1b7e5     0x1775 obj/CELINK.o
-                0x00d1b7e5                _npf_vpprintf
+                0x00d1b79f     0x1775 obj/CELINK.o
+                0x00d1b79f                _npf_vpprintf
  .text._NPF_PUTC_IMPL
-                0x00d1cf5a       0x2d obj/CELINK.o
+                0x00d1cf14       0x2d obj/CELINK.o
  .text._npf_utoa_rev
-                0x00d1cf87       0xe6 obj/CELINK.o
+                0x00d1cf41       0xe6 obj/CELINK.o
  .text._vsnprintf
-                0x00d1d06d       0x88 obj/CELINK.o
-                0x00d1d06d                _vsnprintf
+                0x00d1d027       0x88 obj/CELINK.o
+                0x00d1d027                _vsnprintf
  .text._npf_bufputc
-                0x00d1d0f5       0x25 obj/CELINK.o
+                0x00d1d0af       0x25 obj/CELINK.o
  .text._npf_bufputc_nop
-                0x00d1d11a        0x7 obj/CELINK.o
+                0x00d1d0d4        0x7 obj/CELINK.o
  .text._snprintf
-                0x00d1d121       0x28 obj/CELINK.o
-                0x00d1d121                _snprintf
+                0x00d1d0db       0x28 obj/CELINK.o
+                0x00d1d0db                _snprintf
  .text._sprintf
-                0x00d1d149       0x29 obj/CELINK.o
-                0x00d1d149                _sprintf
- .text.__bctlz  0x00d1d172       0x22 obj/CELINK.o
-                0x00d1d172                __bctlz
- .text.__sctlz  0x00d1d194        0xc obj/CELINK.o
-                0x00d1d194                __sctlz
- .text.__ictlz  0x00d1d1a0       0x12 obj/CELINK.o
-                0x00d1d1a0                __ictlz
+                0x00d1d103       0x29 obj/CELINK.o
+                0x00d1d103                _sprintf
+ .text.__bctlz  0x00d1d12c       0x22 obj/CELINK.o
+                0x00d1d12c                __bctlz
+ .text.__sctlz  0x00d1d14e        0xc obj/CELINK.o
+                0x00d1d14e                __sctlz
+ .text.__ictlz  0x00d1d15a       0x12 obj/CELINK.o
+                0x00d1d15a                __ictlz
  .text.__llctlz
-                0x00d1d1b2        0xe obj/CELINK.o
-                0x00d1d1b2                __llctlz
+                0x00d1d16c        0xe obj/CELINK.o
+                0x00d1d16c                __llctlz
  .text.__i48ctlz
-                0x00d1d1c0       0x15 obj/CELINK.o
-                0x00d1d1c0                __i48ctlz
+                0x00d1d17a       0x15 obj/CELINK.o
+                0x00d1d17a                __i48ctlz
  *(.gnu.warning)
 
-.rodata         0x00d1d1d5      0x316
+.rodata         0x00d1d18f      0x2fb
  *(.rodata .rodata.* .gnu.linkonce.r.*)
- .rodata._.str  0x00d1d1d5       0x18 obj/CELINK.o
+ .rodata._.str  0x00d1d18f       0x18 obj/CELINK.o
  .rodata._.str.1
-                0x00d1d1ed       0x16 obj/CELINK.o
+                0x00d1d1a7       0x16 obj/CELINK.o
  .rodata._.str.2
-                0x00d1d203       0x17 obj/CELINK.o
+                0x00d1d1bd       0x17 obj/CELINK.o
  .rodata._.str.3
-                0x00d1d21a       0x12 obj/CELINK.o
+                0x00d1d1d4       0x12 obj/CELINK.o
  .rodata._.str.4
-                0x00d1d22c       0x12 obj/CELINK.o
+                0x00d1d1e6       0x12 obj/CELINK.o
  .rodata._.str.5
-                0x00d1d23e        0xf obj/CELINK.o
+                0x00d1d1f8        0xf obj/CELINK.o
  .rodata._.str.6
-                0x00d1d24d       0x14 obj/CELINK.o
+                0x00d1d207       0x14 obj/CELINK.o
  .rodata._.str.7
-                0x00d1d261        0xa obj/CELINK.o
+                0x00d1d21b        0xa obj/CELINK.o
  .rodata._.str.8
-                0x00d1d26b       0x17 obj/CELINK.o
+                0x00d1d225       0x17 obj/CELINK.o
  .rodata._.str.9
-                0x00d1d282        0x9 obj/CELINK.o
+                0x00d1d23c        0x9 obj/CELINK.o
  .rodata._.str.10
-                0x00d1d28b        0xb obj/CELINK.o
+                0x00d1d245        0xb obj/CELINK.o
  .rodata._.str.11
-                0x00d1d296        0xe obj/CELINK.o
+                0x00d1d250        0xe obj/CELINK.o
  .rodata._.str.12
-                0x00d1d2a4       0x11 obj/CELINK.o
+                0x00d1d25e       0x11 obj/CELINK.o
  .rodata._.str.13
-                0x00d1d2b5        0x8 obj/CELINK.o
+                0x00d1d26f        0x8 obj/CELINK.o
  .rodata._.str.14
-                0x00d1d2bd        0x6 obj/CELINK.o
+                0x00d1d277        0x6 obj/CELINK.o
  .rodata._.str.15
-                0x00d1d2c3        0xa obj/CELINK.o
+                0x00d1d27d        0xa obj/CELINK.o
  .rodata._.str.16
-                0x00d1d2cd        0xe obj/CELINK.o
+                0x00d1d287        0xe obj/CELINK.o
  .rodata._.str.17
-                0x00d1d2db       0x1f obj/CELINK.o
+                0x00d1d295       0x1f obj/CELINK.o
  .rodata._.str.18
-                0x00d1d2fa       0x1b obj/CELINK.o
+                0x00d1d2b4       0x10 obj/CELINK.o
  .rodata._.str.19
-                0x00d1d315        0xb obj/CELINK.o
+                0x00d1d2c4        0xb obj/CELINK.o
  .rodata._.str.20
-                0x00d1d320        0xb obj/CELINK.o
+                0x00d1d2cf        0xb obj/CELINK.o
  .rodata._.str.21
-                0x00d1d32b        0x6 obj/CELINK.o
+                0x00d1d2da        0x6 obj/CELINK.o
  .rodata._.str.22
-                0x00d1d331       0x10 obj/CELINK.o
+                0x00d1d2e0        0x7 obj/CELINK.o
  .rodata._.str.23
-                0x00d1d341        0x7 obj/CELINK.o
+                0x00d1d2e7       0x10 obj/CELINK.o
  .rodata._.str.24
-                0x00d1d348       0x10 obj/CELINK.o
+                0x00d1d2f7        0x5 obj/CELINK.o
  .rodata._.str.25
-                0x00d1d358        0x5 obj/CELINK.o
+                0x00d1d2fc        0x9 obj/CELINK.o
  .rodata._.str.26
-                0x00d1d35d        0x9 obj/CELINK.o
+                0x00d1d305        0xc obj/CELINK.o
  .rodata._.str.27
-                0x00d1d366        0xc obj/CELINK.o
+                0x00d1d311        0xb obj/CELINK.o
  .rodata._.str.28
-                0x00d1d372        0xb obj/CELINK.o
+                0x00d1d31c        0x5 obj/CELINK.o
  .rodata._.str.29
-                0x00d1d37d        0x5 obj/CELINK.o
+                0x00d1d321        0x5 obj/CELINK.o
  .rodata._.str.30
-                0x00d1d382        0x5 obj/CELINK.o
+                0x00d1d326       0x15 obj/CELINK.o
  .rodata._.str.31
-                0x00d1d387       0x15 obj/CELINK.o
+                0x00d1d33b        0xd obj/CELINK.o
  .rodata._.str.32
-                0x00d1d39c        0xd obj/CELINK.o
+                0x00d1d348        0xf obj/CELINK.o
  .rodata._.str.33
-                0x00d1d3a9        0xf obj/CELINK.o
- .rodata._.str.34
-                0x00d1d3b8        0xf obj/CELINK.o
+                0x00d1d357        0xf obj/CELINK.o
  .rodata._npf_vpprintf
-                0x00d1d3c7      0x102 obj/CELINK.o
+                0x00d1d366      0x102 obj/CELINK.o
  .rodata.libload
-                0x00d1d4c9       0x22 obj/crt0.o
+                0x00d1d468       0x22 obj/crt0.o
 
-.init_array     0x00d1d4eb        0x0
+.init_array     0x00d1d48a        0x0
                 [!provide]                        PROVIDE (__init_array_start = .)
  *(.preinit_array)
  *(SORT_BY_INIT_PRIORITY(.init_array.*))
  *(.init_array)
                 [!provide]                        PROVIDE (__init_array_end = .)
 
-.fini_array     0x00d1d4eb        0x0
+.fini_array     0x00d1d48a        0x0
                 [!provide]                        PROVIDE (__fini_array_start = .)
  *(SORT_BY_INIT_PRIORITY(.fini_array.*))
  *(.fini_array)
                 [!provide]                        PROVIDE (__fini_array_end = .)
-                0x00d1d4eb                        ___data_low = .
+                0x00d1d48a                        ___data_low = .
 
-.data           0x00d1d4eb        0x0
+.data           0x00d1d48a        0x0
  *(.data .data.* .gnu.linkonce.d.*)
  *(.data1)
-                0x00d1d4eb                        ___runprgm_reloc_start = .
+                0x00d1d48a                        ___runprgm_reloc_start = .
  *(.runprgm.reloc)
-                0x00d1d4eb                        ___runprgm_reloc_end = .
-                0x00d1d4eb                        ___data_high = .
+                0x00d1d48a                        ___runprgm_reloc_end = .
+                0x00d1d48a                        ___data_high = .
                 0x00000000                        ___data_len = (___data_high - ___data_low)
                 0x00d052c6                        . = BSSHEAP_LOW
                 0x00d052c6                        ___bss_low = .

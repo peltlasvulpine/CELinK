@@ -62,12 +62,14 @@ The full command set below has been tested from a laptop debug script
 | `help` | List available commands | ✅ |
 | `clear` | Send a blank/padding response | ✅ |
 
-### Calculator side — written, not yet run on hardware
+### Calculator side — confirmed working on real hardware
 
 `src/celink.c` / `src/celink.h` implement the calc as a USB host via
-`srldrvce`, plus a small menu demo (`src/main.c`) that sends the exact
-command set above and displays the replies. Matches the Pico's protocol.
-Not yet compiled/tested against real hardware — next step.
+`srldrvce`. `src/main.c` is a demo/example program built on top of that
+library — it exists to prove the library actually works, not as the
+deliverable itself; it sends the exact command set above and displays the
+replies. Tested end-to-end on real hardware: calculator ↔ Pico 2 W ↔
+Wi-Fi, all commands confirmed working from the calc's own menu.
 
 ---
 
@@ -99,8 +101,9 @@ void celink_disconnect(void);
 
 This is the actual, implemented calculator-side API — a thin, working layer
 over `srldrvce`, not yet the fully abstracted "hides the protocol
-entirely" API Rule 1 describes below. That's the next layer to build once
-this is confirmed working on hardware.
+entirely" API Rule 1 describes below. Confirmed working on hardware via
+`src/main.c`; the abstraction layer (Milestone 5) is the next thing to
+build on top of it.
 
 ---
 
@@ -181,9 +184,9 @@ on top of it.
 | 0 | USB communication proof of concept | 🟢 Complete (superseded design) |
 | 1 | Pico ↔ laptop `usb_cdc.data` protocol | 🟢 Complete |
 | 2 | Full Wi-Fi command set on the Pico | 🟢 Complete |
-| 3 | Calc-side host library + demo | 🟡 Written, untested on hardware |
-| 4 | Calc ↔ Pico working end-to-end | ⬜ Next |
-| 5 | Clean abstracted C API (hides protocol) | ⬜ |
+| 3 | Calc-side host library + demo | 🟢 Complete |
+| 4 | Calc ↔ Pico working end-to-end | 🟢 Complete |
+| 5 | Clean abstracted C API (hides protocol) | ⬜ Next |
 | 6 | HTTP support | ⬜ |
 | 7 | Actual internet applications | ⬜ |
 

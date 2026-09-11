@@ -475,22 +475,38 @@ _celink_disconnect:                     ; @celink_disconnect
 	.type	_main,@function
 _main:                                  ; @main
 ; %bb.0:
-	ld	hl, -712
+	ld	hl, -656
 	call	__frameset
-	ld	de, -370
-	lea	hl, ix + 0
-	add	hl, de
-	ld	bc, -690
+	ld	de, -378
 	lea	iy, ix + 0
-	add	iy, bc
-	lea	de, iy + 0
+	add	iy, de
+	ld	bc, -634
+	lea	hl, ix + 0
+	add	hl, bc
+	ex	de, hl
 	xor	a, a
 	dec	bc
-	lea	iy, ix + 0
-	add	iy, bc
-	ld	(iy + 0), a
-	push	hl
-	pop	iy
+	lea	hl, ix + 0
+	add	hl, bc
+	ld	(hl), a
+	lea	hl, iy + 0
+	push	ix
+	ld	bc, -650
+	add	ix, bc
+	ld	(ix + 0), hl
+	pop	ix
+	lea	hl, ix - 70
+	push	ix
+	ld	bc, -641
+	add	ix, bc
+	ld	(ix + 0), hl
+	pop	ix
+	lea	hl, ix - 78
+	push	ix
+	ld	bc, -653
+	add	ix, bc
+	ld	(ix + 0), hl
+	pop	ix
 	lea	hl, iy + 0
 	lea	bc, iy + 0
 	lea	iy, ix + 0
@@ -499,54 +515,25 @@ _main:                                  ; @main
 	lea	iy, iy - 128
 	lea	iy, iy - 128
 	lea	iy, iy - 128
-	lea	iy, iy - 69
-	ld	(iy + 0), hl
-	lea	hl, ix - 70
-	lea	iy, ix + 0
-	lea	iy, iy - 128
-	lea	iy, iy - 128
-	lea	iy, iy - 128
-	lea	iy, iy - 128
-	lea	iy, iy - 128
-	lea	iy, iy - 57
+	lea	iy, iy - 7
 	ld	(iy + 0), hl
 	push	de
 	pop	iy
 	lea	hl, iy + 0
-	lea	iy, ix + 0
-	lea	iy, iy - 128
-	lea	iy, iy - 128
-	lea	iy, iy - 128
-	lea	iy, iy - 128
-	lea	iy, iy - 128
-	lea	iy, iy - 60
-	ld	(iy + 0), hl
-	push	bc
-	pop	iy
+	push	ix
+	ld	de, -656
+	add	ix, de
+	ld	(ix + 0), hl
+	pop	ix
 	lea	hl, iy + 0
-	lea	iy, ix + 0
-	lea	iy, iy - 128
-	lea	iy, iy - 128
-	lea	iy, iy - 128
-	lea	iy, iy - 128
-	lea	iy, iy - 128
-	lea	iy, iy - 66
-	ld	(iy + 0), hl
-	push	de
-	pop	iy
-	ld	de, -703
-	lea	hl, ix + 0
-	add	hl, de
-	ld	(hl), iy
-	lea	hl, iy + 64
-	ld	de, -712
+	ld	de, -644
 	lea	iy, ix + 0
 	add	iy, de
 	ld	(iy + 0), hl
 	push	bc
 	pop	iy
 	lea	hl, iy + 0
-	ld	de, -694
+	ld	de, -638
 	lea	iy, ix + 0
 	add	iy, de
 	ld	(iy + 0), hl
@@ -575,8 +562,7 @@ _main:                                  ; @main
 	lea	iy, iy - 128
 	lea	iy, iy - 128
 	lea	iy, iy - 128
-	lea	iy, iy - 128
-	lea	iy, iy - 51
+	lea	iy, iy - 123
 	ld	e, (iy + 0)                     ; 1-byte Folded Reload
 	ld	a, e
 	xor	a, c
@@ -586,13 +572,13 @@ _main:                                  ; @main
 ; %bb.3:                                ;   in Loop: Header=BB9_2 Depth=2
 	ld	l, c
 	push	hl
-	ld	de, -691
+	ld	de, -635
 	lea	iy, ix + 0
 	add	iy, de
 	ld	(iy + 0), c                     ; 1-byte Folded Spill
 	call	_draw_menu
 	pop	hl
-	ld	bc, -691
+	ld	bc, -635
 	lea	iy, ix + 0
 	add	iy, bc
 	ld	e, (iy + 0)                     ; 1-byte Folded Reload
@@ -620,7 +606,7 @@ _main:                                  ; @main
 	pop	de
 	ld	a, l
 	bit	1, a
-	ld	bc, -691
+	ld	bc, -635
 	lea	iy, ix + 0
 	push	af
 	add	iy, bc
@@ -708,7 +694,7 @@ _main:                                  ; @main
 	ld	iy, -3145600
 	call	_os_HomeUp
 	call	_os_DrawStatusBar
-	ld	hl, _.str.31
+	ld	hl, _.str.30
 	push	hl
 	call	_os_PutStrFull
 	pop	hl
@@ -717,10 +703,10 @@ _main:                                  ; @main
 	call	_os_NewLine
 	ld	a, (_serial_open)
 	bit	0, a
-	ld	hl, _.str.32
+	ld	hl, _.str.31
 	jr	nz, .LBB9_14
 ; %bb.13:                               ;   in Loop: Header=BB9_1 Depth=1
-	ld	hl, _.str.33
+	ld	hl, _.str.32
 	.local	.LBB9_14
 .LBB9_14:                               ;   in Loop: Header=BB9_1 Depth=1
 	push	hl
@@ -732,9 +718,9 @@ _main:                                  ; @main
 	call	_os_NewLine
 	ld	hl, (_last_error)
 	push	hl
-	ld	hl, _.str.34
+	ld	hl, _.str.33
 	push	hl
-	ld	de, -709
+	ld	de, -650
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
@@ -743,7 +729,7 @@ _main:                                  ; @main
 	pop	hl
 	pop	hl
 	pop	hl
-	ld	de, -709
+	ld	de, -650
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
@@ -770,7 +756,7 @@ _main:                                  ; @main
 	push	hl
 	ld	hl, 256
 	push	hl
-	ld	de, -694
+	ld	de, -638
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
@@ -783,7 +769,7 @@ _main:                                  ; @main
 	pop	hl
 	pop	hl
 	bit	0, a
-	ld	de, -694
+	ld	de, -638
 	lea	iy, ix + 0
 	push	af
 	add	iy, de
@@ -810,7 +796,7 @@ _main:                                  ; @main
 	call	_os_DrawStatusBar
 	ld	hl, 64
 	push	hl
-	ld	de, -697
+	ld	de, -644
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
@@ -823,7 +809,7 @@ _main:                                  ; @main
 	pop	hl
 	ld	hl, 64
 	push	hl
-	ld	de, -700
+	ld	de, -641
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
@@ -834,12 +820,12 @@ _main:                                  ; @main
 	pop	hl
 	pop	hl
 	pop	hl
-	ld	de, -700
+	ld	de, -641
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
 	push	hl
-	ld	de, -697
+	ld	de, -644
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
@@ -848,7 +834,7 @@ _main:                                  ; @main
 	push	hl
 	ld	hl, 300
 	push	hl
-	ld	de, -694
+	ld	de, -638
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
@@ -859,24 +845,12 @@ _main:                                  ; @main
 	pop	hl
 	pop	hl
 	pop	hl
-	ld	hl, 15000
-	push	hl
-	ld	hl, 256
-	push	hl
-	ld	de, -703
-	lea	hl, ix + 0
-	add	hl, de
-	ld	iy, (hl)
-	pea	iy + 64
-	ld	de, -694
+	ld	de, -638
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
 	push	hl
-	call	_celink_request
-	pop	hl
-	pop	hl
-	pop	hl
+	call	_celink_send
 	pop	hl
 	bit	0, a
 	ld	hl, _.str.17
@@ -903,7 +877,7 @@ _main:                                  ; @main
 	ld	hl, _.str.21
 	jr	nz, .LBB9_26
 ; %bb.25:                               ;   in Loop: Header=BB9_1 Depth=1
-	ld	hl, _.str.22
+	ld	hl, _.str.18
 	.local	.LBB9_26
 .LBB9_26:                               ;   in Loop: Header=BB9_1 Depth=1
 	push	hl
@@ -920,12 +894,12 @@ _main:                                  ; @main
 	push	hl
 	ld	hl, 256
 	push	hl
-	ld	de, -706
+	ld	de, -647
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
 	push	hl
-	ld	hl, _.str.24
+	ld	hl, _.str.23
 	push	hl
 	call	_celink_request
 	pop	hl
@@ -933,7 +907,7 @@ _main:                                  ; @main
 	pop	hl
 	pop	hl
 	bit	0, a
-	ld	de, -706
+	ld	de, -647
 	lea	iy, ix + 0
 	push	af
 	add	iy, de
@@ -945,7 +919,7 @@ _main:                                  ; @main
 	.local	.LBB9_30
 .LBB9_30:                               ;   in Loop: Header=BB9_1 Depth=1
 	push	hl
-	ld	hl, _.str.23
+	ld	hl, _.str.22
 	jp	.LBB9_39
 	.local	.LBB9_31
 .LBB9_31:                               ;   in Loop: Header=BB9_1 Depth=1
@@ -960,7 +934,20 @@ _main:                                  ; @main
 	call	_os_DrawStatusBar
 	ld	hl, 64
 	push	hl
-	ld	de, -697
+	ld	de, -641
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	ld	hl, _.str.25
+	push	hl
+	call	_os_GetStringInput
+	pop	hl
+	pop	hl
+	pop	hl
+	ld	hl, 8
+	push	hl
+	ld	de, -653
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
@@ -971,34 +958,21 @@ _main:                                  ; @main
 	pop	hl
 	pop	hl
 	pop	hl
-	ld	hl, 8
+	ld	de, -653
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
 	push	hl
-	ld	de, -700
+	ld	de, -641
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
 	push	hl
 	ld	hl, _.str.27
 	push	hl
-	call	_os_GetStringInput
-	pop	hl
-	pop	hl
-	pop	hl
-	ld	de, -700
-	lea	iy, ix + 0
-	add	iy, de
-	ld	hl, (iy + 0)
-	push	hl
-	ld	de, -697
-	lea	iy, ix + 0
-	add	iy, de
-	ld	hl, (iy + 0)
-	push	hl
-	ld	hl, _.str.28
-	push	hl
 	ld	hl, 300
 	push	hl
-	ld	de, -706
+	ld	de, -647
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
@@ -1013,12 +987,12 @@ _main:                                  ; @main
 	push	hl
 	ld	hl, 256
 	push	hl
-	ld	de, -712
+	ld	de, -656
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
 	push	hl
-	ld	de, -706
+	ld	de, -647
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
@@ -1029,7 +1003,7 @@ _main:                                  ; @main
 	pop	hl
 	pop	hl
 	bit	0, a
-	ld	de, -712
+	ld	de, -656
 	lea	iy, ix + 0
 	push	af
 	add	iy, de
@@ -1041,7 +1015,7 @@ _main:                                  ; @main
 	.local	.LBB9_34
 .LBB9_34:                               ;   in Loop: Header=BB9_1 Depth=1
 	push	hl
-	ld	hl, _.str.25
+	ld	hl, _.str.24
 	jr	.LBB9_39
 	.local	.LBB9_35
 .LBB9_35:                               ;   in Loop: Header=BB9_1 Depth=1
@@ -1054,12 +1028,12 @@ _main:                                  ; @main
 	push	hl
 	ld	hl, 256
 	push	hl
-	ld	de, -709
+	ld	de, -650
 	lea	iy, ix + 0
 	add	iy, de
 	ld	hl, (iy + 0)
 	push	hl
-	ld	hl, _.str.30
+	ld	hl, _.str.29
 	push	hl
 	call	_celink_request
 	pop	hl
@@ -1067,7 +1041,7 @@ _main:                                  ; @main
 	pop	hl
 	pop	hl
 	bit	0, a
-	ld	de, -709
+	ld	de, -650
 	lea	iy, ix + 0
 	push	af
 	add	iy, de
@@ -1079,7 +1053,7 @@ _main:                                  ; @main
 	.local	.LBB9_38
 .LBB9_38:                               ;   in Loop: Header=BB9_1 Depth=1
 	push	hl
-	ld	hl, _.str.29
+	ld	hl, _.str.28
 	.local	.LBB9_39
 .LBB9_39:                               ;   in Loop: Header=BB9_1 Depth=1
 	push	hl
@@ -1397,7 +1371,7 @@ _.str.17:
 	.balign	1
 	.local	_.str.18
 _.str.18:
-	.asciz	"Timed out sending command."
+	.asciz	"Failed to send."
 
 	.section	.rodata._.str.19,"a",@progbits
 	.balign	1
@@ -1421,78 +1395,72 @@ _.str.21:
 	.balign	1
 	.local	_.str.22
 _.str.22:
-	.asciz	"Failed to send."
+	.asciz	"STATUS"
 
 	.section	.rodata._.str.23,"a",@progbits
 	.balign	1
 	.local	_.str.23
 _.str.23:
-	.asciz	"STATUS"
+	.asciz	"wifiisconnected"
 
 	.section	.rodata._.str.24,"a",@progbits
 	.balign	1
 	.local	_.str.24
 _.str.24:
-	.asciz	"wifiisconnected"
+	.asciz	"PING"
 
 	.section	.rodata._.str.25,"a",@progbits
 	.balign	1
 	.local	_.str.25
 _.str.25:
-	.asciz	"PING"
+	.asciz	"HOST/IP:"
 
 	.section	.rodata._.str.26,"a",@progbits
 	.balign	1
 	.local	_.str.26
 _.str.26:
-	.asciz	"HOST/IP:"
+	.asciz	"TIMEOUT(s):"
 
 	.section	.rodata._.str.27,"a",@progbits
 	.balign	1
 	.local	_.str.27
 _.str.27:
-	.asciz	"TIMEOUT(s):"
+	.asciz	"ping|%s|%s"
 
 	.section	.rodata._.str.28,"a",@progbits
 	.balign	1
 	.local	_.str.28
 _.str.28:
-	.asciz	"ping|%s|%s"
+	.asciz	"HELP"
 
 	.section	.rodata._.str.29,"a",@progbits
 	.balign	1
 	.local	_.str.29
 _.str.29:
-	.asciz	"HELP"
+	.asciz	"help"
 
 	.section	.rodata._.str.30,"a",@progbits
 	.balign	1
 	.local	_.str.30
 _.str.30:
-	.asciz	"help"
+	.asciz	"=== CELinK DEBUG ==="
 
 	.section	.rodata._.str.31,"a",@progbits
 	.balign	1
 	.local	_.str.31
 _.str.31:
-	.asciz	"=== CELinK DEBUG ==="
+	.asciz	"SERIAL: OPEN"
 
 	.section	.rodata._.str.32,"a",@progbits
 	.balign	1
 	.local	_.str.32
 _.str.32:
-	.asciz	"SERIAL: OPEN"
+	.asciz	"SERIAL: CLOSED"
 
 	.section	.rodata._.str.33,"a",@progbits
 	.balign	1
 	.local	_.str.33
 _.str.33:
-	.asciz	"SERIAL: CLOSED"
-
-	.section	.rodata._.str.34,"a",@progbits
-	.balign	1
-	.local	_.str.34
-_.str.34:
 	.asciz	"LAST ERROR: %d"
 
 	.ident	"clang version 19.1.0 (https://github.com/CE-Programming/llvm-project ef28e9c54cd1333a6091ab2ffbd315b465fc5090)"

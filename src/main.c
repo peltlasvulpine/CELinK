@@ -123,7 +123,6 @@ static void run_connect(void)
     char ssid[FIELD_SIZE];
     char password[FIELD_SIZE];
     char command[COMMAND_SIZE];
-    char response[RESPONSE_SIZE];
 
     if (!celink_connected())
     {
@@ -137,10 +136,13 @@ static void run_connect(void)
 
     snprintf(command, sizeof(command), "connect|%s|%s", ssid, password);
 
-    if (celink_request(command, response, sizeof(response), TIMEOUT_LONG))
+    /* connect is fire-and-forget by protocol design — the Pico never sends
+     * a reply for it, so we don't wait for one. Use status (option 4) to
+     * confirm once the join finishes. */
+    if (celink_send(command))
         show_result("CONNECT", "Sent. Check status to confirm.");
     else
-        show_result("CONNECT", "Timed out sending command.");
+        show_result("CONNECT", "Failed to send.");
 }
 
 
