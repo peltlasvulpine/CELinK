@@ -6,29 +6,17 @@
 	.type	_celink_init,@function
 _celink_init:                           ; @celink_init
 ; %bb.0:
+	ld	de, 0
 	xor	a, a
 	ld	l, a
-	ld	de, 0
 	ld	iy, _celink_usb_event
 	ld	bc, 36106
-	ld	(_message_buffer), a
-	ld	(_response_buffer), a
-	ld	(_message_ready), a
-	ld	(_response_pending), a
-	ld	(_transfer_pending), a
-	ld	a, l
+	ld	(_connected_device), de
 	ld	(_usb_initialized), a
-	ld	(_setup_seen), de
-	ld	(_transfer_scheduled), de
-	ld	(_transfer_completed), de
-	ld	(_last_status), de
-	ld	(_last_transferred), de
-	ld	(_last_bmRequestType), de
-	ld	(_last_bRequest), de
-	ld	(_last_wValue), de
-	ld	(_last_wIndex), de
-	ld	(_last_wLength), de
-	ld	(_schedule_error), de
+	ld	(_serial_open), a
+	ld	(_last_error), de
+	ld	a, l
+	ld	(_srl_buffer), a
 	push	bc
 	push	de
 	push	de
@@ -48,7 +36,7 @@ _celink_init:                           ; @celink_init
 	ret
 	.local	.LBB0_2
 .LBB0_2:
-	ld	(_last_status), de
+	ld	(_last_error), de
 	ret
 	.local	.Lfunc_end0
 .Lfunc_end0:
@@ -58,258 +46,99 @@ _celink_init:                           ; @celink_init
 	.type	_celink_usb_event,@function     ; -- Begin function celink_usb_event
 _celink_usb_event:                      ; @celink_usb_event
 ; %bb.0:
-	ld	hl, -3
-	call	__frameset
-	ld	hl, (ix + 6)
-	ld	bc, 0
-	ld	de, 11
-	or	a, a
-	sbc	hl, de
-	jr	nz, .LBB1_2
-; %bb.1:
-	ld	iy, (ix + 9)
-	ld	hl, (_setup_seen)
-	inc	hl
-	ld	(_setup_seen), hl
+	call	__frameset0
+	ld	iy, (ix + 6)
+	ld	de, 0
+	ld	bc, 1
 	lea	hl, iy + 0
-	add	hl, bc
+	or	a, a
+	sbc	hl, bc
+	jr	nz, .LBB1_6
+; %bb.1:
+	ld	a, (_serial_open)
+	ld	iy, (_connected_device)
+	bit	0, a
+	jr	z, .LBB1_4
+; %bb.2:
+	lea	hl, iy + 0
+	ld	bc, (ix + 9)
 	or	a, a
 	sbc	hl, bc
 	jr	nz, .LBB1_4
-	.local	.LBB1_2
-.LBB1_2:
-	push	bc
+; %bb.3:
+	ld	hl, _srl_dev
+	push	hl
+	call	_srl_Close
+	ld	de, 0
 	pop	hl
-	.local	.LBB1_3
-.LBB1_3:
-	ld	sp, ix
-	pop	ix
-	ret
+	xor	a, a
+	ld	(_serial_open), a
+	ld	iy, (_connected_device)
 	.local	.LBB1_4
 .LBB1_4:
-	ld	a, (iy)
-	ld	de, 0
-	push	de
-	pop	hl
-	ld	l, a
-	ld	(_last_bmRequestType), hl
-	ld	c, (iy + 1)
-	push	de
-	pop	hl
-	ld	(ix - 3), c                     ; 1-byte Folded Spill
-	ld	l, c
-	ld	(_last_bRequest), hl
-	ld	bc, (iy + 2)
-	push	de
-	pop	hl
-	ld	l, c
-	ld	h, b
-	ld	(_last_wValue), hl
-	ld	hl, (iy + 4)
-	push	de
-	pop	bc
-	ld	c, l
-	ld	b, h
-	ld	(_last_wIndex), bc
-	ld	hl, (iy + 6)
-	ld	e, l
-	ld	d, h
-	ld	(_last_wLength), de
-	cp	a, -64
-	jp	nz, .LBB1_17
+	lea	hl, iy + 0
+	ld	bc, (ix + 9)
+	or	a, a
+	sbc	hl, bc
+	jp	nz, .LBB1_16
 ; %bb.5:
-	ld	a, (ix - 3)                     ; 1-byte Folded Reload
-	cp	a, 2
-	jp	nz, .LBB1_23
-; %bb.6:
-	ld	a, (_transfer_pending)
-	bit	0, a
-	jp	nz, .LBB1_27
+	push	bc
+	call	_usb_UnrefDevice
+	ld	de, 0
+	pop	hl
+	ld	(_connected_device), de
+	jp	.LBB1_16
+	.local	.LBB1_6
+.LBB1_6:
+	ld	bc, 2
+	lea	hl, iy + 0
+	or	a, a
+	sbc	hl, bc
+	jr	nz, .LBB1_9
 ; %bb.7:
-	add.sis	hl, bc
-	or	a, a
-	sbc.sis	hl, bc
-	jp	z, .LBB1_27
+	call	_usb_GetRole
+	ld	a, l
+	bit	4, a
+	jr	nz, .LBB1_15
 ; %bb.8:
-	ld	hl, 8
-	push	hl
-	or	a, a
-	sbc	hl, hl
-	push	hl
-	push	hl
-	call	_usb_FindDevice
-	ex	de, hl
-	pop	hl
-	pop	hl
-	pop	hl
-	sbc	hl, hl
-	adc	hl, de
-	jp	z, .LBB1_22
-; %bb.9:
-	or	a, a
-	sbc	hl, hl
-	push	hl
-	push	de
-	call	_usb_GetDeviceEndpoint
-	ex	de, hl
-	pop	hl
-	pop	hl
-	sbc	hl, hl
-	adc	hl, de
-	jp	z, .LBB1_25
-; %bb.10:
-	ld	bc, _celink_response_callback
-	ld	a, (_response_pending)
-	bit	0, a
-	jp	z, .LBB1_28
-; %bb.11:
-	ld	(ix - 3), de
-	ld	hl, _response_buffer
-	push	hl
-	call	_strlen
-	ex	de, hl
-	pop	hl
-	ld	iy, (ix + 9)
-	ld	hl, (iy + 6)
-	ld	bc, 0
-	ld	c, l
-	ld	b, h
-	push	de
-	pop	hl
-	or	a, a
-	sbc	hl, bc
-	jr	c, .LBB1_13
-; %bb.12:
-	push	bc
-	pop	de
-	.local	.LBB1_13
-.LBB1_13:
-	sbc	hl, hl
-	adc	hl, de
-	jp	z, .LBB1_27
-; %bb.14:
-	ld	bc, 255
-	push	de
-	pop	hl
-	or	a, a
-	sbc	hl, bc
-	jr	c, .LBB1_16
-; %bb.15:
-	ld	de, 255
-	.local	.LBB1_16
-.LBB1_16:
-	ld	a, 1
-	ld	(_transfer_pending), a
-	or	a, a
-	sbc	hl, hl
-	push	hl
-	ld	hl, _celink_response_callback
-	push	hl
-	push	de
-	ld	hl, _response_buffer
-	push	hl
-	ld	hl, (ix - 3)
-	push	hl
-	jp	.LBB1_29
-	.local	.LBB1_17
-.LBB1_17:
-	ld	e, (ix - 3)                     ; 1-byte Folded Reload
-	cp	a, 64
-	jp	nz, .LBB1_23
-; %bb.18:
-	ld	a, e
-	cp	a, 1
-	jp	nz, .LBB1_23
-; %bb.19:
-	ld.sis	de, 256
-                                        ; kill: def $hl killed $hl killed $uhl
-	or	a, a
-	sbc.sis	hl, de
-	jr	nc, .LBB1_27
-; %bb.20:
-	ld	a, (_transfer_pending)
-	bit	0, a
-	jr	nz, .LBB1_27
-; %bb.21:
-	ld	hl, 8
-	push	hl
-	or	a, a
-	sbc	hl, hl
-	push	hl
-	push	hl
-	call	_usb_FindDevice
-	ex	de, hl
-	pop	hl
-	pop	hl
-	pop	hl
-	sbc	hl, hl
-	adc	hl, de
-	jr	nz, .LBB1_24
-	.local	.LBB1_22
-.LBB1_22:
-	ld	hl, 5
-	jr	.LBB1_26
-	.local	.LBB1_23
-.LBB1_23:
-	or	a, a
-	sbc	hl, hl
-	jp	.LBB1_3
-	.local	.LBB1_24
-.LBB1_24:
-	or	a, a
-	sbc	hl, hl
-	push	hl
-	push	de
-	call	_usb_GetDeviceEndpoint
-	ex	de, hl
-	pop	hl
-	pop	hl
-	sbc	hl, hl
-	adc	hl, de
-	jr	nz, .LBB1_30
-	.local	.LBB1_25
-.LBB1_25:
-	ld	hl, 2
-	.local	.LBB1_26
-.LBB1_26:
-	ld	(_last_status), hl
-	.local	.LBB1_27
-.LBB1_27:
-	ld	hl, 1
-	jp	.LBB1_3
-	.local	.LBB1_28
-.LBB1_28:
-	ld	a, 1
-	ld	(_transfer_pending), a
-	or	a, a
-	sbc	hl, hl
-	push	hl
-	push	bc
-	push	hl
-	push	hl
-	push	de
-	.local	.LBB1_29
-.LBB1_29:
-	call	_usb_ScheduleTransfer
-	jr	.LBB1_31
-	.local	.LBB1_30
-.LBB1_30:
-	ld	iy, _message_buffer
-	ld	bc, _celink_receive_callback
-	ld	a, 1
-	ld	(_transfer_pending), a
-	or	a, a
-	sbc	hl, hl
-	push	hl
-	push	bc
-	push	iy
 	ld	hl, (ix + 9)
 	push	hl
+	call	_usb_RefDevice
+	pop	hl
+	ld	hl, (ix + 9)
+	ld	(_connected_device), hl
+	push	hl
+	call	_usb_ResetDevice
+	pop	hl
+	jr	.LBB1_15
+	.local	.LBB1_9
+.LBB1_9:
+	ld	bc, 4
+	lea	hl, iy + 0
+	or	a, a
+	sbc	hl, bc
+	jr	nz, .LBB1_13
+; %bb.10:
+	call	_usb_GetRole
+	ld	a, l
+	bit	4, a
+	jr	nz, .LBB1_15
+; %bb.11:
+	ld	hl, _srl_buffer
+	ld	de, 512
+	ld	bc, 115200
+	push	bc
+	ld	bc, 255
+	push	bc
 	push	de
-	call	_usb_ScheduleControlTransfer
-	.local	.LBB1_31
-.LBB1_31:
+	push	hl
+	ld	hl, (ix + 9)
+	push	hl
+	ld	hl, _srl_dev
+	push	hl
+	call	_srl_Open
 	ex	de, hl
+	pop	hl
 	pop	hl
 	pop	hl
 	pop	hl
@@ -317,124 +146,38 @@ _celink_usb_event:                      ; @celink_usb_event
 	pop	hl
 	sbc	hl, hl
 	adc	hl, de
-	jr	nz, .LBB1_33
-; %bb.32:
-	ld	hl, (_transfer_scheduled)
-	inc	hl
-	ld	(_transfer_scheduled), hl
-	jr	.LBB1_27
-	.local	.LBB1_33
-.LBB1_33:
-	xor	a, a
-	ld	(_transfer_pending), a
-	ld	(_schedule_error), de
-	ld	(_last_status), de
-	jr	.LBB1_27
+	jr	nz, .LBB1_14
+; %bb.12:
+	ld	a, 1
+	ld	(_serial_open), a
+	jr	.LBB1_15
+	.local	.LBB1_13
+.LBB1_13:
+	ld	hl, (ix + 12)
+	push	hl
+	ld	hl, (ix + 9)
+	push	hl
+	push	iy
+	call	_srl_UsbEventCallback
+	ex	de, hl
+	pop	hl
+	pop	hl
+	pop	hl
+	jr	.LBB1_16
+	.local	.LBB1_14
+.LBB1_14:
+	ld	(_last_error), de
+	.local	.LBB1_15
+.LBB1_15:
+	ld	de, 0
+	.local	.LBB1_16
+.LBB1_16:
+	ex	de, hl
+	pop	ix
+	ret
 	.local	.Lfunc_end1
 .Lfunc_end1:
 	.size	_celink_usb_event, .Lfunc_end1-_celink_usb_event
-                                        ; -- End function
-	.section	.text._celink_receive_callback,"ax",@progbits
-	.type	_celink_receive_callback,@function ; -- Begin function celink_receive_callback
-_celink_receive_callback:               ; @celink_receive_callback
-; %bb.0:
-	ld	hl, -3
-	call	__frameset
-	ld	hl, (ix + 9)
-	ld	de, (ix + 12)
-	xor	a, a
-	ld	iy, 0
-	ld	(_transfer_pending), a
-	ld	(_last_status), hl
-	ld	(_last_transferred), de
-	ld	bc, (_transfer_completed)
-	inc	bc
-	ld	(_transfer_completed), bc
-	add	hl, bc
-	or	a, a
-	sbc	hl, bc
-	jr	nz, .LBB2_7
-; %bb.1:
-	ld	bc, 255
-	push	de
-	pop	hl
-	or	a, a
-	sbc	hl, bc
-	push	de
-	pop	bc
-	jr	c, .LBB2_3
-; %bb.2:
-	ld	bc, 255
-	.local	.LBB2_3
-.LBB2_3:
-	ld	a, 1
-	sbc	hl, hl
-	adc	hl, de
-	jr	z, .LBB2_6
-; %bb.4:
-	ld	de, (ix + 15)
-	sbc	hl, hl
-	adc	hl, de
-	jr	z, .LBB2_6
-; %bb.5:
-	push	bc
-	push	de
-	ld	hl, _message_buffer
-	push	hl
-	ld	(ix - 3), bc
-	call	_memcpy
-	ld	a, 1
-	ld	bc, (ix - 3)
-	ld	iy, 0
-	pop	hl
-	pop	hl
-	pop	hl
-	.local	.LBB2_6
-.LBB2_6:
-	ld	hl, _message_buffer
-	add	hl, bc
-	ld	(hl), 0
-	ld	(_message_ready), a
-	.local	.LBB2_7
-.LBB2_7:
-	lea	hl, iy + 0
-	ld	sp, ix
-	pop	ix
-	ret
-	.local	.Lfunc_end2
-.Lfunc_end2:
-	.size	_celink_receive_callback, .Lfunc_end2-_celink_receive_callback
-                                        ; -- End function
-	.section	.text._celink_response_callback,"ax",@progbits
-	.type	_celink_response_callback,@function ; -- Begin function celink_response_callback
-_celink_response_callback:              ; @celink_response_callback
-; %bb.0:
-	call	__frameset0
-	ld	hl, (ix + 9)
-	ld	bc, (ix + 12)
-	xor	a, a
-	ld	de, 0
-	ld	(_transfer_pending), a
-	ld	(_last_status), hl
-	ld	(_last_transferred), bc
-	ld	bc, (_transfer_completed)
-	inc	bc
-	ld	(_transfer_completed), bc
-	add	hl, bc
-	or	a, a
-	sbc	hl, bc
-	jr	nz, .LBB3_2
-; %bb.1:
-	ld	(_response_pending), a
-	ld	(_response_buffer), a
-	.local	.LBB3_2
-.LBB3_2:
-	ex	de, hl
-	pop	ix
-	ret
-	.local	.Lfunc_end3
-.Lfunc_end3:
-	.size	_celink_response_callback, .Lfunc_end3-_celink_response_callback
                                         ; -- End function
 	.section	.text._celink_process,"ax",@progbits
 	.globl	_celink_process                 ; -- Begin function celink_process
@@ -443,51 +186,22 @@ _celink_process:                        ; @celink_process
 ; %bb.0:
 	ld	a, (_usb_initialized)
 	bit	0, a
-	jr	z, .LBB4_2
-; %bb.1:
-	call	_usb_HandleEvents
-	call	_usb_PollTransfers
-	.local	.LBB4_2
-.LBB4_2:
+	call	nz, _usb_HandleEvents
 	ret
-	.local	.Lfunc_end4
-.Lfunc_end4:
-	.size	_celink_process, .Lfunc_end4-_celink_process
+	.local	.Lfunc_end2
+.Lfunc_end2:
+	.size	_celink_process, .Lfunc_end2-_celink_process
                                         ; -- End function
-	.section	.text._celink_message_available,"ax",@progbits
-	.globl	_celink_message_available       ; -- Begin function celink_message_available
-	.type	_celink_message_available,@function
-_celink_message_available:              ; @celink_message_available
+	.section	.text._celink_connected,"ax",@progbits
+	.globl	_celink_connected               ; -- Begin function celink_connected
+	.type	_celink_connected,@function
+_celink_connected:                      ; @celink_connected
 ; %bb.0:
-	ld	a, (_message_ready)
+	ld	a, (_serial_open)
 	ret
-	.local	.Lfunc_end5
-.Lfunc_end5:
-	.size	_celink_message_available, .Lfunc_end5-_celink_message_available
-                                        ; -- End function
-	.section	.text._celink_get_message,"ax",@progbits
-	.globl	_celink_get_message             ; -- Begin function celink_get_message
-	.type	_celink_get_message,@function
-_celink_get_message:                    ; @celink_get_message
-; %bb.0:
-	xor	a, a
-	ld	hl, _message_buffer
-	ld	(_message_ready), a
-	ret
-	.local	.Lfunc_end6
-.Lfunc_end6:
-	.size	_celink_get_message, .Lfunc_end6-_celink_get_message
-                                        ; -- End function
-	.section	.text._celink_response_pending,"ax",@progbits
-	.globl	_celink_response_pending        ; -- Begin function celink_response_pending
-	.type	_celink_response_pending,@function
-_celink_response_pending:               ; @celink_response_pending
-; %bb.0:
-	ld	a, (_response_pending)
-	ret
-	.local	.Lfunc_end7
-.Lfunc_end7:
-	.size	_celink_response_pending, .Lfunc_end7-_celink_response_pending
+	.local	.Lfunc_end3
+.Lfunc_end3:
+	.size	_celink_connected, .Lfunc_end3-_celink_connected
                                         ; -- End function
 	.section	.text._celink_send,"ax",@progbits
 	.globl	_celink_send                    ; -- Begin function celink_send
@@ -496,306 +210,394 @@ _celink_send:                           ; @celink_send
 ; %bb.0:
 	ld	hl, -3
 	call	__frameset
-	ld	de, (ix + 6)
-	xor	a, a
+	ld	bc, (ix + 6)
+	ld	e, 0
+	ld	a, (_serial_open)
+	sbc	hl, hl
+	adc	hl, bc
+	jr	z, .LBB4_7
+; %bb.1:
+	bit	0, a
+	jr	z, .LBB4_7
+; %bb.2:
+	push	bc
+	call	_strlen
+	ex	de, hl
+	pop	hl
 	sbc	hl, hl
 	adc	hl, de
-	jr	z, .LBB8_4
-; %bb.1:
+	jr	z, .LBB4_6
+; %bb.3:
+	ld	hl, _srl_dev
+	ld	(ix - 3), de
 	push	de
-	call	_strlen
+	ld	de, (ix + 6)
+	push	de
 	push	hl
-	pop	bc
+	call	_srl_Write
+	ex	de, hl
 	pop	hl
-	push	bc
 	pop	hl
-	ld	de, -256
-	add	hl, de
-	inc	de
+	pop	hl
+	ld	bc, 0
+	push	de
+	pop	hl
+	or	a, a
+	sbc	hl, bc
+	call	pe, __setflag
+	jp	p, .LBB4_5
+; %bb.4:
+	ld	(_last_error), de
+	jr	.LBB4_6
+	.local	.LBB4_5
+.LBB4_5:
+	ex	de, hl
+	ld	de, (ix - 3)
 	or	a, a
 	sbc	hl, de
-	jr	c, .LBB8_3
-; %bb.2:
-	ld	a, (_response_pending)
-	bit	0, a
-	jr	z, .LBB8_5
-	.local	.LBB8_3
-.LBB8_3:
-	xor	a, a
-	.local	.LBB8_4
-.LBB8_4:
+	jr	z, .LBB4_8
+	.local	.LBB4_6
+.LBB4_6:
+	ld	e, 0
+	.local	.LBB4_7
+.LBB4_7:
+	ld	a, e
 	pop	hl
 	pop	ix
 	ret
-	.local	.LBB8_5
-.LBB8_5:
-	ld	a, (_transfer_pending)
+	.local	.LBB4_8
+.LBB4_8:
+	ld	e, -1
+	jr	.LBB4_7
+	.local	.Lfunc_end4
+.Lfunc_end4:
+	.size	_celink_send, .Lfunc_end4-_celink_send
+                                        ; -- End function
+	.section	.text._celink_read,"ax",@progbits
+	.globl	_celink_read                    ; -- Begin function celink_read
+	.type	_celink_read,@function
+_celink_read:                           ; @celink_read
+; %bb.0:
+	call	__frameset0
+	ld	hl, (ix + 6)
+	ld	bc, 0
+	add	hl, bc
+	or	a, a
+	sbc	hl, bc
+	jr	z, .LBB5_7
+; %bb.1:
+	ld	de, (ix + 9)
+	sbc	hl, hl
+	adc	hl, de
+	jr	z, .LBB5_7
+; %bb.2:
+	ld	a, (_serial_open)
+	bit	0, a
+	jr	z, .LBB5_6
+; %bb.3:
+	ld	hl, _srl_dev
+	dec	de
+	push	de
+	ld	de, (ix + 6)
+	push	de
+	push	hl
+	call	_srl_Read
+	ex	de, hl
+	pop	hl
+	pop	hl
+	pop	hl
+	ld	bc, 0
+	push	de
+	pop	hl
+	or	a, a
+	sbc	hl, bc
+	call	pe, __setflag
+	jp	p, .LBB5_5
+; %bb.4:
+	ld	(_last_error), de
+	ld	bc, 0
+	jr	.LBB5_6
+	.local	.LBB5_5
+.LBB5_5:
+	push	de
+	pop	bc
+	.local	.LBB5_6
+.LBB5_6:
+	ld	hl, (ix + 6)
+	add	hl, bc
+	ld	(hl), 0
+	.local	.LBB5_7
+.LBB5_7:
+	push	bc
+	pop	hl
+	pop	ix
+	ret
+	.local	.Lfunc_end5
+.Lfunc_end5:
+	.size	_celink_read, .Lfunc_end5-_celink_read
+                                        ; -- End function
+	.section	.text._celink_request,"ax",@progbits
+	.globl	_celink_request                 ; -- Begin function celink_request
+	.type	_celink_request,@function
+_celink_request:                        ; @celink_request
+; %bb.0:
+	ld	hl, -4
+	call	__frameset
+	ld	hl, (ix + 9)
+	xor	a, a
+	add	hl, bc
+	or	a, a
+	sbc	hl, bc
+	jr	z, .LBB6_8
+; %bb.1:
+	ld	hl, (ix + 12)
+	add	hl, bc
+	or	a, a
+	sbc	hl, bc
+	jr	z, .LBB6_8
+; %bb.2:
+	ld	de, (ix + 6)
+	ld	hl, (ix + 9)
+	ld	(hl), 0
+	push	de
+	call	_celink_send
+	pop	hl
 	bit	0, a
 	ld	a, 0
-	jr	nz, .LBB8_4
-; %bb.6:
-	ld	de, _response_buffer
-	push	bc
-	ld	hl, (ix + 6)
+	jr	z, .LBB6_8
+; %bb.3:                                ; %.preheader.preheader
+	ld	de, (ix + 15)
+	inc	de
+	ld	c, -1
+	ld	b, 0
+	.local	.LBB6_4
+.LBB6_4:                                ; %.preheader
+                                        ; =>This Inner Loop Header: Depth=1
+	dec	de
+	sbc	hl, hl
+	adc	hl, de
+	ld	a, c
+	jr	nz, .LBB6_6
+; %bb.5:                                ; %.preheader
+                                        ;   in Loop: Header=BB6_4 Depth=1
+	ld	a, b
+	.local	.LBB6_6
+.LBB6_6:                                ; %.preheader
+                                        ;   in Loop: Header=BB6_4 Depth=1
+	sbc	hl, hl
+	adc	hl, de
+	jr	z, .LBB6_8
+; %bb.7:                                ;   in Loop: Header=BB6_4 Depth=1
+	ld	(ix - 1), a                     ; 1-byte Folded Spill
+	ld	(ix - 4), de
+	call	_celink_process
+	ld	hl, (ix + 12)
 	push	hl
-	push	de
-	ld	(ix - 3), bc
-	call	_memcpy
-	ld	a, 1
-	pop	hl
-	pop	hl
-	pop	hl
-	ld	hl, _response_buffer
-	ld	de, (ix - 3)
-	add	hl, de
-	ld	(hl), 0
-	ld	(_response_pending), a
-	jr	.LBB8_4
-	.local	.Lfunc_end8
-.Lfunc_end8:
-	.size	_celink_send, .Lfunc_end8-_celink_send
+	ld	hl, (ix + 9)
+	push	hl
+	call	_celink_read
+	ld	b, 0
+	ld	c, -1
+	ld	a, (ix - 1)                     ; 1-byte Folded Reload
+	pop	de
+	pop	de
+	ld	de, (ix - 4)
+	add	hl, bc
+	or	a, a
+	sbc	hl, bc
+	jr	z, .LBB6_4
+	.local	.LBB6_8
+.LBB6_8:                                ; %.loopexit
+	ld	sp, ix
+	pop	ix
+	ret
+	.local	.Lfunc_end6
+.Lfunc_end6:
+	.size	_celink_request, .Lfunc_end6-_celink_request
+                                        ; -- End function
+	.section	.text._celink_last_error,"ax",@progbits
+	.globl	_celink_last_error              ; -- Begin function celink_last_error
+	.type	_celink_last_error,@function
+_celink_last_error:                     ; @celink_last_error
+; %bb.0:
+	ld	hl, (_last_error)
+	ret
+	.local	.Lfunc_end7
+.Lfunc_end7:
+	.size	_celink_last_error, .Lfunc_end7-_celink_last_error
                                         ; -- End function
 	.section	.text._celink_disconnect,"ax",@progbits
 	.globl	_celink_disconnect              ; -- Begin function celink_disconnect
 	.type	_celink_disconnect,@function
 _celink_disconnect:                     ; @celink_disconnect
 ; %bb.0:
+	ld	a, (_serial_open)
+	bit	0, a
+	jr	z, .LBB8_2
+; %bb.1:
+	ld	hl, _srl_dev
+	push	hl
+	call	_srl_Close
+	pop	hl
+	xor	a, a
+	ld	(_serial_open), a
+	.local	.LBB8_2
+.LBB8_2:
+	ld	de, (_connected_device)
+	sbc	hl, hl
+	adc	hl, de
+	jr	z, .LBB8_4
+; %bb.3:
+	push	de
+	call	_usb_UnrefDevice
+	pop	hl
+	or	a, a
+	sbc	hl, hl
+	ld	(_connected_device), hl
+	.local	.LBB8_4
+.LBB8_4:
 	ld	a, (_usb_initialized)
 	bit	0, a
-	jr	z, .LBB9_2
-; %bb.1:
+	jr	z, .LBB8_6
+; %bb.5:
 	call	_usb_Cleanup
 	xor	a, a
 	ld	(_usb_initialized), a
-	ld	(_transfer_pending), a
-	ld	(_message_ready), a
-	ld	(_response_pending), a
-	ld	(_message_buffer), a
-	ld	(_response_buffer), a
-	.local	.LBB9_2
-.LBB9_2:
+	.local	.LBB8_6
+.LBB8_6:
 	ret
-	.local	.Lfunc_end9
-.Lfunc_end9:
-	.size	_celink_disconnect, .Lfunc_end9-_celink_disconnect
+	.local	.Lfunc_end8
+.Lfunc_end8:
+	.size	_celink_disconnect, .Lfunc_end8-_celink_disconnect
                                         ; -- End function
 	.section	.text._main,"ax",@progbits
 	.globl	_main                           ; -- Begin function main
 	.type	_main,@function
 _main:                                  ; @main
 ; %bb.0:
-	ld	hl, -30
+	ld	hl, -712
 	call	__frameset
-	scf
-	sbc	hl, hl
-	ld	(ix - 30), hl
-	lea	hl, ix - 24
-	ld	(ix - 27), hl
+	ld	de, -370
+	lea	hl, ix + 0
+	add	hl, de
+	ld	bc, -690
+	lea	iy, ix + 0
+	add	iy, bc
+	lea	de, iy + 0
+	xor	a, a
+	dec	bc
+	lea	iy, ix + 0
+	add	iy, bc
+	ld	(iy + 0), a
+	push	hl
+	pop	iy
+	lea	hl, iy + 0
+	lea	bc, iy + 0
+	lea	iy, ix + 0
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 69
+	ld	(iy + 0), hl
+	lea	hl, ix - 70
+	lea	iy, ix + 0
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 57
+	ld	(iy + 0), hl
+	push	de
+	pop	iy
+	lea	hl, iy + 0
+	lea	iy, ix + 0
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 60
+	ld	(iy + 0), hl
+	push	bc
+	pop	iy
+	lea	hl, iy + 0
+	lea	iy, ix + 0
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 66
+	ld	(iy + 0), hl
+	push	de
+	pop	iy
+	ld	de, -703
+	lea	hl, ix + 0
+	add	hl, de
+	ld	(hl), iy
+	lea	hl, iy + 64
+	ld	de, -712
+	lea	iy, ix + 0
+	add	iy, de
+	ld	(iy + 0), hl
+	push	bc
+	pop	iy
+	lea	hl, iy + 0
+	ld	de, -694
+	lea	iy, ix + 0
+	add	iy, de
+	ld	(iy + 0), hl
 	ld	iy, -3145600
 	call	_os_ClrLCD
 	call	_os_HomeUp
 	call	_os_DrawStatusBar
 	call	_celink_init
-	.local	.LBB10_1
-.LBB10_1:                               ; =>This Inner Loop Header: Depth=1
+	or	a, a
+	sbc	hl, hl
+	.local	.LBB9_1
+.LBB9_1:                                ; =>This Loop Header: Depth=1
+                                        ;     Child Loop BB9_2 Depth 2
+	push	hl
+	call	_draw_menu
+	pop	hl
+	.local	.LBB9_2
+.LBB9_2:                                ;   Parent Loop BB9_1 Depth=1
+                                        ; =>  This Inner Loop Header: Depth=2
 	call	_kb_Scan
 	call	_celink_process
-	ld	hl, (_setup_seen)
-	ld	de, (ix - 30)
-	or	a, a
-	sbc	hl, de
-	jp	z, .LBB10_3
-; %bb.2:                                ;   in Loop: Header=BB10_1 Depth=1
-	ld	hl, (_setup_seen)
-	ld	(ix - 30), hl
-	ld	hl, -3145600
-	push	hl
-	pop	iy
-	call	_os_ClrLCD
-	ld	iy, -3145600
-	call	_os_HomeUp
-	call	_os_DrawStatusBar
-	ld	hl, _.str
-	push	hl
-	call	_os_PutStrFull
-	pop	hl
-	ld	iy, -3145600
-	call	_os_NewLine
-	ld	hl, (_setup_seen)
-	push	hl
-	ld	hl, _.str.1
-	push	hl
-	ld	hl, (ix - 27)
-	push	hl
-	call	_sprintf
-	pop	hl
-	pop	hl
-	pop	hl
-	ld	hl, (ix - 27)
-	push	hl
-	call	_os_PutStrFull
-	pop	hl
-	ld	iy, -3145600
-	call	_os_NewLine
-	ld	hl, (_last_bmRequestType)
-	ld	de, (_last_bRequest)
-	push	de
-	push	hl
-	ld	hl, _.str.2
-	push	hl
-	ld	hl, (ix - 27)
-	push	hl
-	call	_sprintf
-	pop	hl
-	pop	hl
-	pop	hl
-	pop	hl
-	ld	hl, (ix - 27)
-	push	hl
-	call	_os_PutStrFull
-	pop	hl
-	ld	iy, -3145600
-	call	_os_NewLine
-	ld	hl, (_last_wLength)
-	push	hl
-	ld	hl, _.str.3
-	push	hl
-	ld	hl, (ix - 27)
-	push	hl
-	call	_sprintf
-	pop	hl
-	pop	hl
-	pop	hl
-	ld	hl, (ix - 27)
-	push	hl
-	call	_os_PutStrFull
-	pop	hl
-	ld	iy, -3145600
-	call	_os_NewLine
-	ld	hl, (_transfer_scheduled)
-	ld	de, (_transfer_completed)
-	push	de
-	push	hl
-	ld	hl, _.str.4
-	push	hl
-	ld	hl, (ix - 27)
-	push	hl
-	call	_sprintf
-	pop	hl
-	pop	hl
-	pop	hl
-	pop	hl
-	ld	hl, (ix - 27)
-	push	hl
-	call	_os_PutStrFull
-	pop	hl
-	ld	iy, -3145600
-	call	_os_NewLine
-	ld	hl, (_last_status)
-	push	hl
-	ld	hl, _.str.5
-	push	hl
-	ld	hl, (ix - 27)
-	push	hl
-	call	_sprintf
-	pop	hl
-	pop	hl
-	pop	hl
-	ld	hl, (ix - 27)
-	push	hl
-	call	_os_PutStrFull
-	pop	hl
-	ld	iy, -3145600
-	call	_os_NewLine
-	ld	hl, (_last_transferred)
-	push	hl
-	ld	hl, _.str.6
-	push	hl
-	ld	hl, (ix - 27)
-	push	hl
-	call	_sprintf
-	pop	hl
-	pop	hl
-	pop	hl
-	ld	hl, (ix - 27)
-	push	hl
-	call	_os_PutStrFull
-	pop	hl
-	.local	.LBB10_3
-.LBB10_3:                               ;   in Loop: Header=BB10_1 Depth=1
-	ld	a, (_message_ready)
-	bit	0, a
-	jr	z, .LBB10_5
-; %bb.4:                                ;   in Loop: Header=BB10_1 Depth=1
-	xor	a, a
-	ld	(_message_ready), a
-	ld	hl, -3145600
-	push	hl
-	pop	iy
-	call	_os_ClrLCD
-	ld	iy, -3145600
-	call	_os_HomeUp
-	call	_os_DrawStatusBar
-	ld	hl, _.str.7
-	push	hl
-	call	_os_PutStrFull
-	pop	hl
-	ld	iy, -3145600
-	call	_os_NewLine
-	call	_os_NewLine
-	ld	hl, _message_buffer
-	push	hl
-	call	_os_PutStrFull
-	pop	hl
-	ld	iy, -3145600
-	call	_os_NewLine
-	call	_os_NewLine
-	ld	hl, _.str.8
-	push	hl
-	call	_os_PutStrFull
-	pop	hl
-	.local	.LBB10_5
-.LBB10_5:                               ;   in Loop: Header=BB10_1 Depth=1
-	ld	hl, -720868
-	push	de
-	ld	e, (hl)
-	inc	hl
-	ld	d, (hl)
-	ld	l, e
-	ld	h, d
-	pop	de
-	ld.sis	bc, 1
-	call	__sand
+	ld	a, (_serial_open)
+	ld	c, a
+	lea	iy, ix + 0
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 128
+	lea	iy, iy - 51
+	ld	e, (iy + 0)                     ; 1-byte Folded Reload
+	ld	a, e
+	xor	a, c
+	ld	l, a
 	bit	0, l
-	jr	z, .LBB10_8
-; %bb.6:                                ;   in Loop: Header=BB10_1 Depth=1
-	ld	hl, _.str.9
+	jr	z, .LBB9_4
+; %bb.3:                                ;   in Loop: Header=BB9_2 Depth=2
+	ld	l, c
 	push	hl
-	call	_celink_send
+	ld	de, -691
+	lea	iy, ix + 0
+	add	iy, de
+	ld	(iy + 0), c                     ; 1-byte Folded Spill
+	call	_draw_menu
 	pop	hl
-	bit	0, a
-	jr	z, .LBB10_8
-; %bb.7:                                ;   in Loop: Header=BB10_1 Depth=1
-	ld	hl, -3145600
-	push	hl
-	pop	iy
-	call	_os_ClrLCD
-	ld	iy, -3145600
-	call	_os_HomeUp
-	call	_os_DrawStatusBar
-	ld	hl, _.str.10
-	push	hl
-	call	_os_PutStrFull
-	pop	hl
-	ld	iy, -3145600
-	call	_os_NewLine
-	call	_os_NewLine
-	ld	hl, _.str.11
-	push	hl
-	call	_os_PutStrFull
-	pop	hl
-	.local	.LBB10_8
-.LBB10_8:                               ;   in Loop: Header=BB10_1 Depth=1
+	ld	bc, -691
+	lea	iy, ix + 0
+	add	iy, bc
+	ld	e, (iy + 0)                     ; 1-byte Folded Reload
+	.local	.LBB9_4
+.LBB9_4:                                ;   in Loop: Header=BB9_2 Depth=2
 	ld	hl, -720868
 	push	de
 	ld	e, (hl)
@@ -806,65 +608,652 @@ _main:                                  ; @main
 	pop	de
 	ld	a, l
 	bit	6, a
-	jp	z, .LBB10_1
-; %bb.9:
+	jp	nz, .LBB9_41
+; %bb.5:                                ;   in Loop: Header=BB9_2 Depth=2
+	ld	hl, -720874
+	push	de
+	ld	e, (hl)
+	inc	hl
+	ld	d, (hl)
+	ld	l, e
+	ld	h, d
+	pop	de
+	ld	a, l
+	bit	1, a
+	ld	bc, -691
+	lea	iy, ix + 0
+	push	af
+	add	iy, bc
+	pop	af
+	ld	(iy + 0), e
+	jp	nz, .LBB9_15
+; %bb.6:                                ;   in Loop: Header=BB9_2 Depth=2
+	ld	hl, -720872
+	push	de
+	ld	e, (hl)
+	inc	hl
+	ld	d, (hl)
+	ld	l, e
+	ld	h, d
+	pop	de
+	ld	a, l
+	bit	1, a
+	jp	nz, .LBB9_19
+; %bb.7:                                ;   in Loop: Header=BB9_2 Depth=2
+	ld	hl, -720870
+	push	de
+	ld	e, (hl)
+	inc	hl
+	ld	d, (hl)
+	ld	l, e
+	ld	h, d
+	pop	de
+	ld	a, l
+	bit	1, a
+	jp	nz, .LBB9_23
+; %bb.8:                                ;   in Loop: Header=BB9_2 Depth=2
+	ld	hl, -720874
+	push	de
+	ld	e, (hl)
+	inc	hl
+	ld	d, (hl)
+	ld	l, e
+	ld	h, d
+	pop	de
+	ld	a, l
+	bit	2, a
+	jp	nz, .LBB9_27
+; %bb.9:                                ;   in Loop: Header=BB9_2 Depth=2
+	ld	hl, -720872
+	push	de
+	ld	e, (hl)
+	inc	hl
+	ld	d, (hl)
+	ld	l, e
+	ld	h, d
+	pop	de
+	ld	a, l
+	bit	2, a
+	jp	nz, .LBB9_31
+; %bb.10:                               ;   in Loop: Header=BB9_2 Depth=2
+	ld	hl, -720870
+	push	de
+	ld	e, (hl)
+	inc	hl
+	ld	d, (hl)
+	ld	l, e
+	ld	h, d
+	pop	de
+	ld	a, l
+	bit	2, a
+	jp	nz, .LBB9_35
+; %bb.11:                               ;   in Loop: Header=BB9_2 Depth=2
+	ld	hl, -720874
+	push	de
+	ld	e, (hl)
+	inc	hl
+	ld	d, (hl)
+	ld	l, e
+	ld	h, d
+	pop	de
+	ld.sis	bc, 1
+	call	__sand
+	bit	0, l
+	jp	z, .LBB9_2
+; %bb.12:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	hl, -3145600
+	push	hl
+	pop	iy
+	call	_os_ClrLCD
+	ld	iy, -3145600
+	call	_os_HomeUp
+	call	_os_DrawStatusBar
+	ld	hl, _.str.31
+	push	hl
+	call	_os_PutStrFull
+	pop	hl
+	ld	iy, -3145600
+	call	_os_NewLine
+	call	_os_NewLine
+	ld	a, (_serial_open)
+	bit	0, a
+	ld	hl, _.str.32
+	jr	nz, .LBB9_14
+; %bb.13:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	hl, _.str.33
+	.local	.LBB9_14
+.LBB9_14:                               ;   in Loop: Header=BB9_1 Depth=1
+	push	hl
+	call	_os_PutStrFull
+	pop	hl
+	ld	hl, -3145600
+	push	hl
+	pop	iy
+	call	_os_NewLine
+	ld	hl, (_last_error)
+	push	hl
+	ld	hl, _.str.34
+	push	hl
+	ld	de, -709
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	call	_sprintf
+	pop	hl
+	pop	hl
+	pop	hl
+	ld	de, -709
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	call	_os_PutStrFull
+	pop	hl
+	ld	iy, -3145600
+	call	_os_NewLine
+	call	_os_NewLine
+	ld	hl, _.str.12
+	push	hl
+	call	_os_PutStrFull
+	pop	hl
+	call	_wait_for_any_key
+	jp	.LBB9_40
+	.local	.LBB9_15
+.LBB9_15:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	a, (_serial_open)
+	bit	0, a
+	ld	hl, _.str.8
+	jr	z, .LBB9_18
+; %bb.16:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	hl, 15000
+	push	hl
+	ld	hl, 256
+	push	hl
+	ld	de, -694
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	ld	hl, _.str.9
+	push	hl
+	call	_celink_request
+	pop	hl
+	pop	hl
+	pop	hl
+	pop	hl
+	bit	0, a
+	ld	de, -694
+	lea	iy, ix + 0
+	push	af
+	add	iy, de
+	pop	af
+	ld	hl, (iy + 0)
+	jr	nz, .LBB9_18
+; %bb.17:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	hl, _.str.10
+	.local	.LBB9_18
+.LBB9_18:                               ;   in Loop: Header=BB9_1 Depth=1
+	push	hl
+	ld	hl, _.str.7
+	jp	.LBB9_39
+	.local	.LBB9_19
+.LBB9_19:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	a, (_serial_open)
+	bit	0, a
+	ld	hl, _.str.8
+	jp	z, .LBB9_22
+; %bb.20:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	iy, -3145600
+	call	_os_ClrLCD
+	call	_os_HomeUp
+	call	_os_DrawStatusBar
+	ld	hl, 64
+	push	hl
+	ld	de, -697
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	ld	hl, _.str.14
+	push	hl
+	call	_os_GetStringInput
+	pop	hl
+	pop	hl
+	pop	hl
+	ld	hl, 64
+	push	hl
+	ld	de, -700
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	ld	hl, _.str.15
+	push	hl
+	call	_os_GetStringInput
+	pop	hl
+	pop	hl
+	pop	hl
+	ld	de, -700
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	ld	de, -697
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	ld	hl, _.str.16
+	push	hl
+	ld	hl, 300
+	push	hl
+	ld	de, -694
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	call	_snprintf
+	pop	hl
+	pop	hl
+	pop	hl
+	pop	hl
+	pop	hl
+	ld	hl, 15000
+	push	hl
+	ld	hl, 256
+	push	hl
+	ld	de, -703
+	lea	hl, ix + 0
+	add	hl, de
+	ld	iy, (hl)
+	pea	iy + 64
+	ld	de, -694
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	call	_celink_request
+	pop	hl
+	pop	hl
+	pop	hl
+	pop	hl
+	bit	0, a
+	ld	hl, _.str.17
+	jr	nz, .LBB9_22
+; %bb.21:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	hl, _.str.18
+	.local	.LBB9_22
+.LBB9_22:                               ;   in Loop: Header=BB9_1 Depth=1
+	push	hl
+	ld	hl, _.str.13
+	jp	.LBB9_39
+	.local	.LBB9_23
+.LBB9_23:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	a, (_serial_open)
+	bit	0, a
+	ld	hl, _.str.8
+	jr	z, .LBB9_26
+; %bb.24:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	hl, _.str.20
+	push	hl
+	call	_celink_send
+	pop	hl
+	bit	0, a
+	ld	hl, _.str.21
+	jr	nz, .LBB9_26
+; %bb.25:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	hl, _.str.22
+	.local	.LBB9_26
+.LBB9_26:                               ;   in Loop: Header=BB9_1 Depth=1
+	push	hl
+	ld	hl, _.str.19
+	jp	.LBB9_39
+	.local	.LBB9_27
+.LBB9_27:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	a, (_serial_open)
+	bit	0, a
+	ld	hl, _.str.8
+	jr	z, .LBB9_30
+; %bb.28:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	hl, 4000
+	push	hl
+	ld	hl, 256
+	push	hl
+	ld	de, -706
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	ld	hl, _.str.24
+	push	hl
+	call	_celink_request
+	pop	hl
+	pop	hl
+	pop	hl
+	pop	hl
+	bit	0, a
+	ld	de, -706
+	lea	iy, ix + 0
+	push	af
+	add	iy, de
+	pop	af
+	ld	hl, (iy + 0)
+	jr	nz, .LBB9_30
+; %bb.29:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	hl, _.str.10
+	.local	.LBB9_30
+.LBB9_30:                               ;   in Loop: Header=BB9_1 Depth=1
+	push	hl
+	ld	hl, _.str.23
+	jp	.LBB9_39
+	.local	.LBB9_31
+.LBB9_31:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	a, (_serial_open)
+	bit	0, a
+	ld	hl, _.str.8
+	jp	z, .LBB9_34
+; %bb.32:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	iy, -3145600
+	call	_os_ClrLCD
+	call	_os_HomeUp
+	call	_os_DrawStatusBar
+	ld	hl, 64
+	push	hl
+	ld	de, -697
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	ld	hl, _.str.26
+	push	hl
+	call	_os_GetStringInput
+	pop	hl
+	pop	hl
+	pop	hl
+	ld	hl, 8
+	push	hl
+	ld	de, -700
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	ld	hl, _.str.27
+	push	hl
+	call	_os_GetStringInput
+	pop	hl
+	pop	hl
+	pop	hl
+	ld	de, -700
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	ld	de, -697
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	ld	hl, _.str.28
+	push	hl
+	ld	hl, 300
+	push	hl
+	ld	de, -706
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	call	_snprintf
+	pop	hl
+	pop	hl
+	pop	hl
+	pop	hl
+	pop	hl
+	ld	hl, 8000
+	push	hl
+	ld	hl, 256
+	push	hl
+	ld	de, -712
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	ld	de, -706
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	call	_celink_request
+	pop	hl
+	pop	hl
+	pop	hl
+	pop	hl
+	bit	0, a
+	ld	de, -712
+	lea	iy, ix + 0
+	push	af
+	add	iy, de
+	pop	af
+	ld	hl, (iy + 0)
+	jr	nz, .LBB9_34
+; %bb.33:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	hl, _.str.10
+	.local	.LBB9_34
+.LBB9_34:                               ;   in Loop: Header=BB9_1 Depth=1
+	push	hl
+	ld	hl, _.str.25
+	jr	.LBB9_39
+	.local	.LBB9_35
+.LBB9_35:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	a, (_serial_open)
+	bit	0, a
+	ld	hl, _.str.8
+	jr	z, .LBB9_38
+; %bb.36:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	hl, 4000
+	push	hl
+	ld	hl, 256
+	push	hl
+	ld	de, -709
+	lea	iy, ix + 0
+	add	iy, de
+	ld	hl, (iy + 0)
+	push	hl
+	ld	hl, _.str.30
+	push	hl
+	call	_celink_request
+	pop	hl
+	pop	hl
+	pop	hl
+	pop	hl
+	bit	0, a
+	ld	de, -709
+	lea	iy, ix + 0
+	push	af
+	add	iy, de
+	pop	af
+	ld	hl, (iy + 0)
+	jr	nz, .LBB9_38
+; %bb.37:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	hl, _.str.10
+	.local	.LBB9_38
+.LBB9_38:                               ;   in Loop: Header=BB9_1 Depth=1
+	push	hl
+	ld	hl, _.str.29
+	.local	.LBB9_39
+.LBB9_39:                               ;   in Loop: Header=BB9_1 Depth=1
+	push	hl
+	call	_show_result
+	pop	hl
+	pop	hl
+	.local	.LBB9_40
+.LBB9_40:                               ;   in Loop: Header=BB9_1 Depth=1
+	ld	a, (_serial_open)
+	ld	l, a
+	jp	.LBB9_1
+	.local	.LBB9_41
+.LBB9_41:
 	call	_celink_disconnect
 	or	a, a
 	sbc	hl, hl
 	ld	sp, ix
 	pop	ix
 	ret
+	.local	.Lfunc_end9
+.Lfunc_end9:
+	.size	_main, .Lfunc_end9-_main
+                                        ; -- End function
+	.section	.text._draw_menu,"ax",@progbits
+	.type	_draw_menu,@function            ; -- Begin function draw_menu
+_draw_menu:                             ; @draw_menu
+; %bb.0:
+	ld	hl, -1
+	call	__frameset
+	ld	a, (ix + 6)
+	ld	(ix - 1), a
+	ld	iy, -3145600
+	call	_os_ClrLCD
+	call	_os_HomeUp
+	call	_os_DrawStatusBar
+	ld	hl, _.str
+	push	hl
+	call	_os_PutStrFull
+	pop	hl
+	ld	iy, -3145600
+	call	_os_NewLine
+	call	_os_NewLine
+	bit	0, (ix - 1)                     ; 1-byte Folded Reload
+	jr	nz, .LBB10_2
+; %bb.1:
+	ld	hl, _.str.2
+	jr	.LBB10_3
+	.local	.LBB10_2
+.LBB10_2:
+	ld	hl, _.str.1
+	.local	.LBB10_3
+.LBB10_3:
+	push	hl
+	call	_os_PutStrFull
+	pop	hl
+	ld	hl, -3145600
+	push	hl
+	pop	iy
+	call	_os_NewLine
+	ld	iy, -3145600
+	call	_os_NewLine
+	ld	hl, _.str.3
+	push	hl
+	call	_os_PutStrFull
+	pop	hl
+	ld	iy, -3145600
+	call	_os_NewLine
+	ld	hl, _.str.4
+	push	hl
+	call	_os_PutStrFull
+	pop	hl
+	ld	iy, -3145600
+	call	_os_NewLine
+	ld	hl, _.str.5
+	push	hl
+	call	_os_PutStrFull
+	pop	hl
+	ld	iy, -3145600
+	call	_os_NewLine
+	call	_os_NewLine
+	ld	hl, _.str.6
+	ld	(ix + 6), hl
+	inc	sp
+	pop	ix
+	jp	_os_PutStrFull
 	.local	.Lfunc_end10
 .Lfunc_end10:
-	.size	_main, .Lfunc_end10-_main
+	.size	_draw_menu, .Lfunc_end10-_draw_menu
                                         ; -- End function
-	.section	.bss._last_wValue,"aw",@nobits
+	.section	.text._show_result,"ax",@progbits
+	.type	_show_result,@function          ; -- Begin function show_result
+_show_result:                           ; @show_result
+; %bb.0:
+	ld	hl, -6
+	call	__frameset
+	ld	hl, (ix + 6)
+	ld	(ix - 6), hl
+	ld	hl, (ix + 9)
+	ld	(ix - 3), hl
+	ld	iy, -3145600
+	call	_os_ClrLCD
+	call	_os_HomeUp
+	call	_os_DrawStatusBar
+	ld	hl, (ix - 6)
+	push	hl
+	call	_os_PutStrFull
+	pop	hl
+	ld	iy, -3145600
+	call	_os_NewLine
+	call	_os_NewLine
+	ld	hl, (ix - 3)
+	push	hl
+	pop	de
+	add	hl, bc
+	or	a, a
+	sbc	hl, bc
+	jr	nz, .LBB11_2
+; %bb.1:
+	ld	hl, _.str.11
+	jr	.LBB11_4
+	.local	.LBB11_2
+.LBB11_2:
+	push	de
+	pop	hl
+	ld	a, (hl)
+	or	a, a
+	ld	hl, _.str.11
+	jr	z, .LBB11_4
+; %bb.3:
+	ex	de, hl
+	.local	.LBB11_4
+.LBB11_4:
+	push	hl
+	call	_os_PutStrFull
+	pop	hl
+	ld	iy, -3145600
+	call	_os_NewLine
+	call	_os_NewLine
+	ld	hl, _.str.12
+	push	hl
+	call	_os_PutStrFull
+	ld	sp, ix
+	pop	ix
+	jp	_wait_for_any_key
+	.local	.Lfunc_end11
+.Lfunc_end11:
+	.size	_show_result, .Lfunc_end11-_show_result
+                                        ; -- End function
+	.section	.text._wait_for_any_key,"ax",@progbits
+	.type	_wait_for_any_key,@function     ; -- Begin function wait_for_any_key
+_wait_for_any_key:                      ; @wait_for_any_key
+; %bb.0:
+	.local	.LBB12_1
+.LBB12_1:                               ; =>This Inner Loop Header: Depth=1
+	call	_os_GetCSC
+	or	a, a
+	jr	nz, .LBB12_1
+	.local	.LBB12_2
+.LBB12_2:                               ; %.preheader
+                                        ; =>This Inner Loop Header: Depth=1
+	call	_os_GetCSC
+	or	a, a
+	jr	z, .LBB12_2
+; %bb.3:
+	ret
+	.local	.Lfunc_end12
+.Lfunc_end12:
+	.size	_wait_for_any_key, .Lfunc_end12-_wait_for_any_key
+                                        ; -- End function
+	.section	.bss._connected_device,"aw",@nobits
 	.balign	1
-	.globl	_last_wValue
-_last_wValue:
+	.local	_connected_device
+_connected_device:
 	.zero	3
-
-	.section	.bss._last_wIndex,"aw",@nobits
-	.balign	1
-	.globl	_last_wIndex
-_last_wIndex:
-	.zero	3
-
-	.section	.bss._schedule_error,"aw",@nobits
-	.balign	1
-	.globl	_schedule_error
-_schedule_error:
-	.zero	3
-
-	.section	.bss._message_buffer,"aw",@nobits
-	.balign	1
-	.local	_message_buffer
-_message_buffer:
-	.zero	256
-
-	.section	.bss._response_buffer,"aw",@nobits
-	.balign	1
-	.local	_response_buffer
-_response_buffer:
-	.zero	256
-
-	.section	.bss._message_ready,"aw",@nobits
-	.balign	1
-	.local	_message_ready
-_message_ready:
-	.zero	1
-
-	.section	.bss._response_pending,"aw",@nobits
-	.balign	1
-	.local	_response_pending
-_response_pending:
-	.zero	1
-
-	.section	.bss._transfer_pending,"aw",@nobits
-	.balign	1
-	.local	_transfer_pending
-_transfer_pending:
-	.zero	1
 
 	.section	.bss._usb_initialized,"aw",@nobits
 	.balign	1
@@ -872,152 +1261,266 @@ _transfer_pending:
 _usb_initialized:
 	.zero	1
 
-	.section	.bss._setup_seen,"aw",@nobits
+	.section	.bss._serial_open,"aw",@nobits
 	.balign	1
-	.globl	_setup_seen
-_setup_seen:
+	.local	_serial_open
+_serial_open:
+	.zero	1
+
+	.section	.bss._last_error,"aw",@nobits
+	.balign	1
+	.local	_last_error
+_last_error:
 	.zero	3
+
+	.section	.bss._srl_buffer,"aw",@nobits
+	.balign	1
+	.local	_srl_buffer
+_srl_buffer:
+	.zero	512
+
+	.section	.bss._srl_dev,"aw",@nobits
+	.balign	1
+	.local	_srl_dev
+_srl_dev:
+	.zero	58
 
 	.section	.rodata._.str,"a",@progbits
 	.balign	1
 	.local	_.str
 _.str:
-	.asciz	"CELinK DEBUG"
+	.asciz	"=== CELinK DEMO ==="
 
 	.section	.rodata._.str.1,"a",@progbits
 	.balign	1
 	.local	_.str.1
 _.str.1:
-	.asciz	"SETUP %u"
+	.asciz	"STATUS: CONNECTED"
 
 	.section	.rodata._.str.2,"a",@progbits
 	.balign	1
 	.local	_.str.2
 _.str.2:
-	.asciz	"TYPE %02X REQ %02X"
-
-	.section	.bss._last_bmRequestType,"aw",@nobits
-	.balign	1
-	.globl	_last_bmRequestType
-_last_bmRequestType:
-	.zero	3
-
-	.section	.bss._last_bRequest,"aw",@nobits
-	.balign	1
-	.globl	_last_bRequest
-_last_bRequest:
-	.zero	3
+	.asciz	"STATUS: WAITING..."
 
 	.section	.rodata._.str.3,"a",@progbits
 	.balign	1
 	.local	_.str.3
 _.str.3:
-	.asciz	"LEN %u"
-
-	.section	.bss._last_wLength,"aw",@nobits
-	.balign	1
-	.globl	_last_wLength
-_last_wLength:
-	.zero	3
+	.asciz	"1:Scan  2:Connect"
 
 	.section	.rodata._.str.4,"a",@progbits
 	.balign	1
 	.local	_.str.4
 _.str.4:
-	.asciz	"SCHED %u DONE %u"
-
-	.section	.bss._transfer_scheduled,"aw",@nobits
-	.balign	1
-	.globl	_transfer_scheduled
-_transfer_scheduled:
-	.zero	3
-
-	.section	.bss._transfer_completed,"aw",@nobits
-	.balign	1
-	.globl	_transfer_completed
-_transfer_completed:
-	.zero	3
+	.asciz	"3:Discon 4:Status"
 
 	.section	.rodata._.str.5,"a",@progbits
 	.balign	1
 	.local	_.str.5
 _.str.5:
-	.asciz	"STAT %u"
-
-	.section	.bss._last_status,"aw",@nobits
-	.balign	1
-	.globl	_last_status
-_last_status:
-	.zero	3
+	.asciz	"5:Ping  6:Help"
 
 	.section	.rodata._.str.6,"a",@progbits
 	.balign	1
 	.local	_.str.6
 _.str.6:
-	.asciz	"BYTES %u"
-
-	.section	.bss._last_transferred,"aw",@nobits
-	.balign	1
-	.globl	_last_transferred
-_last_transferred:
-	.zero	3
+	.asciz	"0:Debug  CLEAR:Quit"
 
 	.section	.rodata._.str.7,"a",@progbits
 	.balign	1
 	.local	_.str.7
 _.str.7:
-	.asciz	"PC SAYS:"
+	.asciz	"WIFI SCAN"
 
 	.section	.rodata._.str.8,"a",@progbits
 	.balign	1
 	.local	_.str.8
 _.str.8:
-	.asciz	"ENTER = REPLY"
+	.asciz	"Not connected to Pico."
 
 	.section	.rodata._.str.9,"a",@progbits
 	.balign	1
 	.local	_.str.9
 _.str.9:
-	.asciz	"hello from CELinK"
+	.asciz	"wifiscan"
 
 	.section	.rodata._.str.10,"a",@progbits
 	.balign	1
 	.local	_.str.10
 _.str.10:
-	.asciz	"REPLY QUEUED"
+	.asciz	"Timed out."
 
 	.section	.rodata._.str.11,"a",@progbits
 	.balign	1
 	.local	_.str.11
 _.str.11:
-	.asciz	"Waiting for PC..."
+	.asciz	"(no response)"
+
+	.section	.rodata._.str.12,"a",@progbits
+	.balign	1
+	.local	_.str.12
+_.str.12:
+	.asciz	"Press any key..."
+
+	.section	.rodata._.str.13,"a",@progbits
+	.balign	1
+	.local	_.str.13
+_.str.13:
+	.asciz	"CONNECT"
+
+	.section	.rodata._.str.14,"a",@progbits
+	.balign	1
+	.local	_.str.14
+_.str.14:
+	.asciz	"SSID:"
+
+	.section	.rodata._.str.15,"a",@progbits
+	.balign	1
+	.local	_.str.15
+_.str.15:
+	.asciz	"PASSWORD:"
+
+	.section	.rodata._.str.16,"a",@progbits
+	.balign	1
+	.local	_.str.16
+_.str.16:
+	.asciz	"connect|%s|%s"
+
+	.section	.rodata._.str.17,"a",@progbits
+	.balign	1
+	.local	_.str.17
+_.str.17:
+	.asciz	"Sent. Check status to confirm."
+
+	.section	.rodata._.str.18,"a",@progbits
+	.balign	1
+	.local	_.str.18
+_.str.18:
+	.asciz	"Timed out sending command."
+
+	.section	.rodata._.str.19,"a",@progbits
+	.balign	1
+	.local	_.str.19
+_.str.19:
+	.asciz	"DISCONNECT"
+
+	.section	.rodata._.str.20,"a",@progbits
+	.balign	1
+	.local	_.str.20
+_.str.20:
+	.asciz	"disconnect"
+
+	.section	.rodata._.str.21,"a",@progbits
+	.balign	1
+	.local	_.str.21
+_.str.21:
+	.asciz	"Sent."
+
+	.section	.rodata._.str.22,"a",@progbits
+	.balign	1
+	.local	_.str.22
+_.str.22:
+	.asciz	"Failed to send."
+
+	.section	.rodata._.str.23,"a",@progbits
+	.balign	1
+	.local	_.str.23
+_.str.23:
+	.asciz	"STATUS"
+
+	.section	.rodata._.str.24,"a",@progbits
+	.balign	1
+	.local	_.str.24
+_.str.24:
+	.asciz	"wifiisconnected"
+
+	.section	.rodata._.str.25,"a",@progbits
+	.balign	1
+	.local	_.str.25
+_.str.25:
+	.asciz	"PING"
+
+	.section	.rodata._.str.26,"a",@progbits
+	.balign	1
+	.local	_.str.26
+_.str.26:
+	.asciz	"HOST/IP:"
+
+	.section	.rodata._.str.27,"a",@progbits
+	.balign	1
+	.local	_.str.27
+_.str.27:
+	.asciz	"TIMEOUT(s):"
+
+	.section	.rodata._.str.28,"a",@progbits
+	.balign	1
+	.local	_.str.28
+_.str.28:
+	.asciz	"ping|%s|%s"
+
+	.section	.rodata._.str.29,"a",@progbits
+	.balign	1
+	.local	_.str.29
+_.str.29:
+	.asciz	"HELP"
+
+	.section	.rodata._.str.30,"a",@progbits
+	.balign	1
+	.local	_.str.30
+_.str.30:
+	.asciz	"help"
+
+	.section	.rodata._.str.31,"a",@progbits
+	.balign	1
+	.local	_.str.31
+_.str.31:
+	.asciz	"=== CELinK DEBUG ==="
+
+	.section	.rodata._.str.32,"a",@progbits
+	.balign	1
+	.local	_.str.32
+_.str.32:
+	.asciz	"SERIAL: OPEN"
+
+	.section	.rodata._.str.33,"a",@progbits
+	.balign	1
+	.local	_.str.33
+_.str.33:
+	.asciz	"SERIAL: CLOSED"
+
+	.section	.rodata._.str.34,"a",@progbits
+	.balign	1
+	.local	_.str.34
+_.str.34:
+	.asciz	"LAST ERROR: %d"
 
 	.ident	"clang version 19.1.0 (https://github.com/CE-Programming/llvm-project ef28e9c54cd1333a6091ab2ffbd315b465fc5090)"
 	.ident	"clang version 19.1.0 (https://github.com/CE-Programming/llvm-project ef28e9c54cd1333a6091ab2ffbd315b465fc5090)"
 	.section	".note.GNU-stack","",@progbits
 	.extern	_os_HomeUp
-	.extern	_llvm.umin.i24
 	.extern	_usb_Cleanup
 	.extern	_llvm.eh.sjlj.functioncontext
+	.extern	_usb_GetRole
 	.extern	_usb_HandleEvents
 	.extern	_llvm.lifetime.end.p0
-	.extern	_memcpy
+	.extern	_srl_Write
+	.extern	_os_GetStringInput
 	.extern	_llvm.eh.sjlj.lsda
-	.extern	_usb_GetDeviceEndpoint
 	.extern	__Unwind_SjLj_Unregister
 	.extern	_strlen
-	.extern	_usb_ScheduleControlTransfer
 	.extern	__frameset
-	.extern	_usb_PollTransfers
-	.extern	_usb_FindDevice
 	.extern	_kb_Scan
+	.extern	_srl_UsbEventCallback
 	.extern	_usb_Init
-	.extern	_usb_ScheduleTransfer
+	.extern	__setflag
+	.extern	_srl_Close
 	.extern	_os_ClrLCD
-	.extern	_llvm.memcpy.p0.p0.i24
+	.extern	_os_GetCSC
 	.extern	_llvm.eh.sjlj.callsite
 	.extern	_llvm.eh.sjlj.setup.dispatch
 	.extern	_llvm.stacksave.p0
+	.extern	_srl_Open
 	.extern	_llvm.lifetime.start.p0
 	.extern	__frameset0
 	.extern	__Unwind_SjLj_Register
@@ -1026,5 +1529,10 @@ _.str.11:
 	.extern	_os_PutStrFull
 	.extern	__sand
 	.extern	_llvm.stackrestore.p0
+	.extern	_usb_RefDevice
+	.extern	_snprintf
 	.extern	_sprintf
+	.extern	_usb_ResetDevice
 	.extern	_os_NewLine
+	.extern	_usb_UnrefDevice
+	.extern	_srl_Read
