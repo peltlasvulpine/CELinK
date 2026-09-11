@@ -41,7 +41,6 @@ calculator side talks to it in host mode via `srldrvce`.
 
 ## 📡 Status
 
-- Pico-side Wi-Fi command layer: **working**, tested end-to-end from a
-  laptop debugger
-- Calculator-side host library + demo menu: **written**, not yet run on
-  real hardware
+Confirmed working end-to-end on real hardware — calculator ↔ Pico 2 W ↔
+Wi-Fi. From the calculator's own menu demo, all of these work: Wi-Fi scan,
+connect, disconnect, status check, and ping.
