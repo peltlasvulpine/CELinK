@@ -4,6 +4,8 @@
 #include <srldrvce.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 /*
  * CELinK — calculator side (USB HOST)
@@ -234,6 +236,155 @@ bool celink_request(const char *command, char *buf, size_t len,
 int celink_last_error(void)
 {
     return last_error;
+}
+
+
+#define CELINK_GET_CMD_MAX  512
+#define CELINK_HEADER_MAX   128
+#define CELINK_CHUNK_SIZE   64
+
+bool celink_get(const char *url, char *body, size_t max_body,
+                 int *out_status, unsigned timeout_iters)
+{
+    char command[CELINK_GET_CMD_MAX];
+    char header[CELINK_HEADER_MAX];
+    char pending[CELINK_CHUNK_SIZE];
+    size_t pending_len = 0;
+    size_t header_len = 0;
+    size_t have = 0;
+    unsigned idle = 0;
+    bool header_done = false;
+    long content_length = -1;
+    char *bar1, *bar2;
+
+    if (out_status != NULL)
+        *out_status = -1;
+
+    if (body == NULL || max_body == 0)
+        return false;
+
+    body[0] = '\0';
+
+    if (url == NULL || !celink_connected())
+        return false;
+
+    /* Cap the body at what we can actually hold so the Pico doesn't
+     * bother sending more than we can keep. */
+    snprintf(command, sizeof(command), "get|%s|%u",
+             url, (unsigned)(max_body - 1));
+
+    if (!celink_send(command))
+        return false;
+
+    /* Phase 1: accumulate the "status|<code>|<len>" or "error|<msg>"
+     * header line. Anything read past the newline in the same chunk
+     * belongs to the body, not the header — stash it in `pending` so
+     * phase 2 doesn't lose it. */
+    while (!header_done && idle < timeout_iters)
+    {
+        char chunk[CELINK_CHUNK_SIZE];
+        int n, i;
+
+        celink_process();
+        n = celink_read(chunk, sizeof(chunk));
+
+        if (n <= 0)
+        {
+            idle++;
+            continue;
+        }
+
+        idle = 0;
+
+        for (i = 0; i < n; i++)
+        {
+            if (chunk[i] == '\n')
+            {
+                header_done = true;
+                i++;
+                break;
+            }
+
+            if (header_len + 1 < sizeof(header))
+                header[header_len++] = chunk[i];
+        }
+
+        header[header_len] = '\0';
+
+        if (header_done)
+        {
+            for (; i < n && pending_len < sizeof(pending); i++)
+                pending[pending_len++] = chunk[i];
+        }
+    }
+
+    if (!header_done)
+    {
+        strncpy(body, "Timed out waiting for header.", max_body - 1);
+        body[max_body - 1] = '\0';
+        return false;
+    }
+
+    if (strncmp(header, "error|", 6) == 0)
+    {
+        strncpy(body, header + 6, max_body - 1);
+        body[max_body - 1] = '\0';
+        return false;
+    }
+
+    /* Expect "status|<code>|<len>". */
+    bar1 = strchr(header, '|');
+    bar2 = bar1 ? strchr(bar1 + 1, '|') : NULL;
+
+    if (bar1 == NULL || bar2 == NULL)
+    {
+        strncpy(body, "Bad response header.", max_body - 1);
+        body[max_body - 1] = '\0';
+        return false;
+    }
+
+    if (out_status != NULL)
+        *out_status = atoi(bar1 + 1);
+
+    content_length = atol(bar2 + 1);
+
+    if (content_length < 0)
+    {
+        strncpy(body, "Bad content length.", max_body - 1);
+        body[max_body - 1] = '\0';
+        return false;
+    }
+
+    /* Phase 2: fill body with exactly content_length raw bytes, starting
+     * with whatever was already stashed in `pending`. */
+    for (size_t i = 0; i < pending_len && have + 1 < max_body; i++)
+        body[have++] = pending[i];
+
+    idle = 0;
+
+    while ((long)have < content_length && idle < timeout_iters)
+    {
+        char chunk[CELINK_CHUNK_SIZE];
+        int n, i;
+
+        celink_process();
+        n = celink_read(chunk, sizeof(chunk));
+
+        if (n <= 0)
+        {
+            idle++;
+            continue;
+        }
+
+        idle = 0;
+
+        for (i = 0; i < n && have + 1 < max_body; i++)
+            body[have++] = chunk[i];
+    }
+
+    body[have] = '\0';
+
+    return (long)have >= content_length || have + 1 >= max_body;
 }
 
 

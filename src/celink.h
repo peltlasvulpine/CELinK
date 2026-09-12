@@ -49,6 +49,26 @@ bool celink_request(const char *command, char *buf, size_t len,
  * error has been recorded. */
 int celink_last_error(void);
 
+/* Fetches a URL through the Pico. Sends "get|<url>|<max_body-1>" so the
+ * Pico knows the most it should bother sending, then reads back a
+ * "status|<code>|<length>" header line followed by exactly <length> raw
+ * body bytes (the body is NOT pipe-escaped — it's read as a known-length
+ * blob, so it can contain any bytes except that an embedded '\0' will
+ * still look like end-of-string once copied into `body`).
+ *
+ * On success, copies up to max_body - 1 body bytes into `body`
+ * (null-terminated) and sets *out_status to the HTTP status code, then
+ * returns true. On failure (a "error|<message>" reply, a malformed
+ * header, or a stall of more than timeout_iters idle iterations waiting
+ * for the header or for body bytes), copies an error message into
+ * `body` instead, sets *out_status to -1, and returns false.
+ *
+ * timeout_iters is an *idle* timeout — it resets every time new bytes
+ * arrive, so a slow-but-steady page transfer won't time out partway
+ * through the way a fixed overall timeout would. */
+bool celink_get(const char *url, char *body, size_t max_body,
+                 int *out_status, unsigned timeout_iters);
+
 /* Shuts down USB and forgets the connection. Safe to call even if never
  * connected. */
 void celink_disconnect(void);

@@ -17,6 +17,7 @@
 #define RESPONSE_SIZE 256
 #define COMMAND_SIZE  300
 #define FIELD_SIZE    64
+#define BODY_SIZE     2048
 
 /* Rough iteration-based timeouts for celink_request(). These are loop
  * counts, not calibrated real time — a Wi-Fi scan takes longer than a
@@ -24,6 +25,11 @@
 #define TIMEOUT_SHORT  4000
 #define TIMEOUT_MEDIUM 8000
 #define TIMEOUT_LONG   15000
+
+/* celink_get()'s timeout is an idle timeout (resets on any new bytes),
+ * so this only needs to cover the gaps between packets, not the whole
+ * page transfer. */
+#define TIMEOUT_GET    8000
 
 
 static void draw_menu(bool connected)
@@ -42,6 +48,8 @@ static void draw_menu(bool connected)
     os_PutStrFull("3:Discon 4:Status");
     os_NewLine();
     os_PutStrFull("5:Ping  6:Help");
+    os_NewLine();
+    os_PutStrFull("7:Get");
     os_NewLine();
     os_NewLine();
     os_PutStrFull("0:Debug  CLEAR:Quit");
@@ -222,6 +230,38 @@ static void run_help(void)
 }
 
 
+static void run_get(void)
+{
+    char url[FIELD_SIZE];
+    static char body[BODY_SIZE];
+    char label[FIELD_SIZE + 16];
+    int status = -1;
+
+    if (!celink_connected())
+    {
+        show_result("GET", "Not connected to Pico.");
+        return;
+    }
+
+    os_ClrHome();
+    os_GetStringInput("URL:", url, sizeof(url));
+
+    if (celink_get(url, body, sizeof(body), &status, TIMEOUT_GET))
+    {
+        /* BODY_SIZE is a lot smaller than most real pages, so this is
+         * just enough to prove the fetch actually worked — not a
+         * browser. Scrolling/paging through the rest is future work. */
+        snprintf(label, sizeof(label), "GET %d", status);
+        show_result(label, body);
+    }
+    else
+    {
+        snprintf(label, sizeof(label), "GET FAILED (%d)", status);
+        show_result(label, body);
+    }
+}
+
+
 int main(void)
 {
     bool was_connected = false;
@@ -274,6 +314,11 @@ int main(void)
         else if (kb_IsDown(kb_Key6))
         {
             run_help();
+            draw_menu(celink_connected());
+        }
+        else if (kb_IsDown(kb_Key7))
+        {
+            run_get();
             draw_menu(celink_connected());
         }
         else if (kb_IsDown(kb_Key0))

@@ -6,6 +6,10 @@ import ipaddress
 import board
 import digitalio
 import socketpool
+import adafruit_requests
+import adafruit_connection_manager
+import rtc
+import adafruit_ntp
 
 signalstrength = {
       0 : "Excellent",
@@ -25,6 +29,9 @@ led = digitalio.DigitalInOut(board.LED)
 led.direction = digitalio.Direction.OUTPUT
 
 pool = socketpool.SocketPool(wifi.radio)
+adafruitpool = adafruit_connection_manager.get_radio_socketpool(wifi.radio)
+ssl_context = adafruit_connection_manager.get_radio_ssl_context(wifi.radio)
+requests = adafruit_requests.Session(adafruitpool, ssl_context)
 
 def resolve(hostname):
     return pool.getaddrinfo(hostname, 0)[0][4][0]
@@ -47,9 +54,42 @@ def scan():
 def connect(ssid, passwd):
     print(f"connecting to {ssid}...")
     led.value = True
-    wifi.radio.connect(ssid, passwd)
+    try:
+        wifi.radio.connect(ssid, passwd)
+        print("Waiting for IP address...")
+        timeout = 10
+        start_time = time.time()
+        while not wifi.radio.connected:
+            if time.time() - start_time > timeout:
+                print("Connection timed out waiting for IP.")
+                led.value = False
+                return
+            time.sleep(0.5)
+            
+    except Exception as e:
+        print(f"failed to connect to {ssid}: {e}")
+        led.value = False
+        return
+    
+    print("Settling network interface...")
+    time.sleep(2.0)
+
+    print("Syncing network time...")
+    try:
+        ntp = adafruit_ntp.NTP(pool, tz_offset=0)
+        rtc.RTC().datetime = ntp.datetime
+    except Exception as e:
+        print(f"NTP sync failed: {e}")
+        
+    with open("/r1.pem", "r") as f:
+        ca_cert_data = f.read().strip()
+
+    ssl_context.load_verify_locations(cadata=ca_cert_data)
+    
     led.value = False
     print(f"connected to {ssid}")
+
+
 
 def disconnect():
     print("disconnecting...")
@@ -68,5 +108,20 @@ def ping(ip, timeout):
         ip = resolve(ip)
     return wifi.radio.ping(ip, timeout=timeout)
 
+def geturl(url, maxbytes):
+    led.value = True
+    try:
+        if not url.startswith("http"):
+            url = "https://" + url
+        print(f"getting {url}...")
+        with requests.get(url) as response:
+            body = response.content[:maxbytes]
+            header = f"status|{response.status_code}|{len(body)}\n"
+    except Exception as e:
+        header = f"error|{str(e)[:80]}\n"
+        body = b""
+    led.value = False
+    return header, body
+
 def help():
-    return "wifiscan|clear|wifiisconnected|connect|disconnect|ping"
+    return "wifiscan|connect|disconnect|wifiisconnected|ping|get|clear"

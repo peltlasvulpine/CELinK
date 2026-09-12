@@ -9,6 +9,7 @@ serial.write(b"initialized")
 while True:
     if serial.in_waiting:
         oi = ""
+        oi2 = b""
         io = serial.read(serial.in_waiting)
         data = io.decode().strip()
         if data == "wifiscan":
@@ -36,8 +37,13 @@ while True:
             temp = data.split("|")
             oi = str(wifihelprs.ping(temp[1], int(temp[2])))
             print(f"pinged {temp[1]}")
+        
+        if data.startswith("get"):
+            temp = data.split("|")
+            oi, oi2 = wifihelprs.geturl(temp[1], int(temp[2]))
 
         if data == "help":
             oi = wifihelprs.help()
 
         serial.write(oi.encode("utf-8"))
+        serial.write(oi2)

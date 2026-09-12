@@ -32,7 +32,7 @@ TI-84 Plus CE
 CELinK is the **abstraction layer** — not just "some USB code."
 
 The calculator is the USB host. It's what powers the link and initiates the
-connection, using `srldrvce` in host mode. The Pico 2 W is the USB device,
+connection, via `srldrvce` in host mode. The Pico 2 W is the USB device,
 running CircuitPython with `usb_cdc.data` enabled. They talk over a plain
 pipe-delimited text protocol (see below) rather than raw custom control
 transfers — simpler on both ends, and the calc's `srldrvce` and the Pico's
@@ -40,7 +40,7 @@ transfers — simpler on both ends, and the calc's `srldrvce` and the Pico's
 
 An earlier prototype had the calculator acting as a USB *device* answering
 raw control transfers from a PC (the original proof of concept). That path
-is superseded now that the architecture is calc-as-host — it's no longer
+is superseded now that the architecture is calc-as-host, it's no longer 
 what CELinK uses, just history.
 
 ---
@@ -61,6 +61,7 @@ The full command set below has been tested from a laptop debug script
 | `ping\|host\|timeout` | Ping by IP or hostname (DNS-resolved) | ✅ |
 | `help` | List available commands | ✅ |
 | `clear` | Send a blank/padding response | ✅ |
+| `get\|url\|maxbytes` | Fetch a URL (HTTP or HTTPS) via `adafruit_requests`, reply as `status\|code\|len` + raw body | ✅ |
 
 ### Calculator side — confirmed working on real hardware
 
@@ -139,7 +140,7 @@ complicated shit handled here
 - [x] Common cables/adapters — stock micro↔mini cable, no wiring needed
 - [x] Prove stuff with PC/laptop before buying hardware
 - [ ] Free/open-source software where possible
-- [ ] Avoid specialized equipment (still just the Pico + cable — fine so far)
+- [ ] Avoid specialized equipment (except for the Pico 2W)
 
 ```
 buy board → buy cable → flash CircuitPython → plug into CE → internet
@@ -166,14 +167,23 @@ on top of it.
 
 ---
 
-## 🌐 Networking — Pico Side Implemented, HTTP Still Missing
+## 🌐 Networking — HTTP/HTTPS Working, POST Still Missing
 
 - [x] Wi-Fi scanning
 - [x] Wi-Fi connect / disconnect / status
 - [x] DNS (hostname → IP resolution for `ping`)
 - [x] Ping
-- [ ] HTTP requests
-- [ ] Structured network error handling
+- [x] HTTP requests (`get|url|maxbytes`)
+- [x] HTTPS — via a manually-curated multi-root CA bundle in `r1.pem`
+      (loaded once with `ssl_context.load_verify_locations(cadata=...)`;
+      covers Google's and DuckDuckGo's chains so far). Confirmed working
+      against `https://www.google.com` and `https://lite.duckduckgo.com/lite/`
+      on real hardware.
+- [ ] POST requests — needed for anything that submits a form (e.g. actual
+      DDG Lite search, which posts `q` to `/lite/`)
+- [ ] Structured network error handling — errors currently surface as
+      whatever CircuitPython's bare `OSError`/mbedtls message happens to be,
+      not always human-readable
 
 ---
 
@@ -187,8 +197,8 @@ on top of it.
 | 3 | Calc-side host library + demo | 🟢 Complete |
 | 4 | Calc ↔ Pico working end-to-end | 🟢 Complete |
 | 5 | Clean abstracted C API (hides protocol) | ⬜ Next |
-| 6 | HTTP support | ⬜ |
-| 7 | Actual internet applications | ⬜ |
+| 6 | HTTP support (incl. HTTPS via CA bundle) | 🟢 Complete |
+| 7 | Actual internet applications | ⬜ In progress (search via DDG Lite) |
 
 That's when CELinK stops being "cool USB experiment" and becomes **the
 calculator internet library**.
