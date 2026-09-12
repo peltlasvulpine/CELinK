@@ -41,9 +41,25 @@ int celink_read(char *buf, size_t len);
 /* Sends `command`, then repeatedly calls celink_process() and checks for a
  * reply until one arrives or `timeout_iters` iterations pass with nothing
  * received. Copies the reply into buf on success. Returns true on success,
- * false on timeout, send failure, or if not connected. */
-bool celink_request(const char *command, char *buf, size_t len,
-                     unsigned timeout_iters);
+ * false on timeout, send failure, protocol mismatch, or if not connected.
+ *
+ * Every reply from the Pico is prefixed with a single raw status-code
+ * byte identifying which command it answers (see the CELINK_CODE_*
+ * constants below) — this lets us positively reject a stale reply left
+ * over from an earlier command instead of accidentally displaying it.
+ * `expected_code` is the code this particular command's reply should
+ * carry; a mismatch fails with an explanatory message in `buf`. */
+bool celink_request(const char *command, int expected_code, char *buf,
+                     size_t len, unsigned timeout_iters);
+
+/* Codes the Pico prefixes onto every reply (see code.py's `code`
+ * variable) — must match exactly. Fire-and-forget commands (connect,
+ * disconnect) get no reply at all, so they have no code here. */
+#define CELINK_CODE_WIFISCAN 1
+#define CELINK_CODE_STATUS   2
+#define CELINK_CODE_PING     3
+#define CELINK_CODE_GET      4
+#define CELINK_CODE_HELP     5
 
 /* Last low-level usbdrvce/srldrvce error code, for debugging. 0 means no
  * error has been recorded. */

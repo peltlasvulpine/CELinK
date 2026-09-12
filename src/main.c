@@ -112,6 +112,10 @@ static void show_debug_screen(void)
 static void run_wifiscan(void)
 {
     char response[RESPONSE_SIZE];
+    char *wifi;
+    char *colon;
+    char line[27];
+    int lines = 0;
 
     if (!celink_connected())
     {
@@ -119,10 +123,47 @@ static void run_wifiscan(void)
         return;
     }
 
-    if (celink_request("wifiscan", response, sizeof(response), TIMEOUT_LONG))
-        show_result("WIFI SCAN", response);
-    else
-        show_result("WIFI SCAN", "Timed out.");
+    if (!celink_request("wifiscan", CELINK_CODE_WIFISCAN, response,
+                         sizeof(response), TIMEOUT_LONG))
+    {
+        show_result("WIFI SCAN",
+                     response[0] != '\0' ? response : "Timed out.");
+        return;
+    }
+
+    os_ClrHome();
+
+    wifi = strtok(response, "|");
+
+    while (wifi != NULL && lines < 10)
+    {
+        colon = strchr(wifi, ':');
+
+        if (colon != NULL)
+        {
+            *colon = '\0';
+
+            snprintf(
+                line,
+                sizeof(line),
+                "%-16.16s %.9s",
+                wifi,
+                colon + 1
+            );
+
+            os_PutStrFull(line);
+            os_NewLine();
+
+            lines++;
+        }
+
+        wifi = strtok(NULL, "|");
+    }
+
+    os_NewLine();
+    os_PutStrFull("Press any key...");
+
+    wait_for_any_key();
 }
 
 
@@ -139,14 +180,17 @@ static void run_connect(void)
     }
 
     os_ClrHome();
-    os_GetStringInput("SSID:", ssid, sizeof(ssid));
-    os_GetStringInput("PASSWORD:", password, sizeof(password));
+
+    os_PutStrFull("SSID:");
+    os_NewLine();
+    os_GetStringInput("", ssid, sizeof(ssid));
+    os_NewLine();
+    os_PutStrFull("PASSWORD:");
+    os_NewLine();
+    os_GetStringInput("", password, sizeof(password));
 
     snprintf(command, sizeof(command), "connect|%s|%s", ssid, password);
 
-    /* connect is fire-and-forget by protocol design — the Pico never sends
-     * a reply for it, so we don't wait for one. Use status (option 4) to
-     * confirm once the join finishes. */
     if (celink_send(command))
         show_result("CONNECT", "Sent. Check status to confirm.");
     else
@@ -179,11 +223,11 @@ static void run_status(void)
         return;
     }
 
-    if (celink_request("wifiisconnected", response, sizeof(response),
-                        TIMEOUT_SHORT))
+    if (celink_request("wifiisconnected", CELINK_CODE_STATUS, response,
+                        sizeof(response), TIMEOUT_SHORT))
         show_result("STATUS", response);
     else
-        show_result("STATUS", "Timed out.");
+        show_result("STATUS", response[0] != '\0' ? response : "Timed out.");
 }
 
 
@@ -206,10 +250,11 @@ static void run_ping(void)
 
     snprintf(command, sizeof(command), "ping|%s|%s", host, timeout_str);
 
-    if (celink_request(command, response, sizeof(response), TIMEOUT_MEDIUM))
+    if (celink_request(command, CELINK_CODE_PING, response, sizeof(response),
+                        TIMEOUT_MEDIUM))
         show_result("PING", response);
     else
-        show_result("PING", "Timed out.");
+        show_result("PING", response[0] != '\0' ? response : "Timed out.");
 }
 
 
@@ -223,10 +268,11 @@ static void run_help(void)
         return;
     }
 
-    if (celink_request("help", response, sizeof(response), TIMEOUT_SHORT))
+    if (celink_request("help", CELINK_CODE_HELP, response, sizeof(response),
+                        TIMEOUT_SHORT))
         show_result("HELP", response);
     else
-        show_result("HELP", "Timed out.");
+        show_result("HELP", response[0] != '\0' ? response : "Timed out.");
 }
 
 

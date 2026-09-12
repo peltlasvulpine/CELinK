@@ -208,28 +208,93 @@ int celink_read(char *buf, size_t len)
 }
 
 
-bool celink_request(const char *command, char *buf, size_t len,
-                     unsigned timeout_iters)
+#define CELINK_CHUNK_SIZE       64
+#define CELINK_DRAIN_IDLE_ITERS 300
+
+/* Reads and discards anything sitting in the receive buffer until the
+ * channel has been genuinely quiet — no new bytes — for
+ * CELINK_DRAIN_IDLE_ITERS iterations in a row. The old version stopped
+ * at the first single empty read, which can fire in the gap between two
+ * of the Pico's separate serial.write() calls for the same reply and
+ * leave its tail behind to be misread as the next command's answer. */
+static void celink_drain_stale(void)
 {
-    unsigned i;
+    char scratch[CELINK_CHUNK_SIZE];
+    unsigned idle = 0;
+
+    while (idle < CELINK_DRAIN_IDLE_ITERS)
+    {
+        celink_process();
+
+        if (celink_read(scratch, sizeof(scratch)) > 0)
+            idle = 0;
+        else
+            idle++;
+    }
+}
+
+
+bool celink_request(const char *command, int expected_code, char *buf,
+                     size_t len, unsigned timeout_iters)
+{
+    size_t have = 0;
+    unsigned idle = 0;
 
     if (buf == NULL || len == 0)
         return false;
 
     buf[0] = '\0';
 
+    celink_drain_stale();
+
     if (!celink_send(command))
         return false;
 
-    for (i = 0; i < timeout_iters; i++)
+    /* Accumulate based on an idle gap, not "stop at the first non-empty
+     * read" — the Pico sends a reply as several separate serial.write()
+     * calls (code byte, then the string), so grabbing just the first
+     * chunk risks capturing only the lone code byte and calling it
+     * done. */
+    while (idle < timeout_iters)
     {
-        celink_process();
+        char chunk[CELINK_CHUNK_SIZE];
+        int n;
 
-        if (celink_read(buf, len) > 0)
-            return true;
+        celink_process();
+        n = celink_read(chunk, sizeof(chunk));
+
+        if (n <= 0)
+        {
+            idle++;
+            continue;
+        }
+
+        idle = 0;
+
+        for (int i = 0; i < n && have + 1 < len; i++)
+            buf[have++] = chunk[i];
     }
 
-    return false;
+    buf[have] = '\0';
+
+    if (have == 0)
+        return false;
+
+    /* The first byte identifies which command this reply actually
+     * answers. A mismatch means a stale reply slipped through despite
+     * the drain above — surface that clearly instead of silently
+     * showing the wrong text. */
+    if ((unsigned char)buf[0] != (unsigned char)expected_code)
+    {
+        int got_code = (unsigned char)buf[0];
+        snprintf(buf, len, "Protocol mismatch (got code %d, expected %d).",
+                 got_code, expected_code);
+        return false;
+    }
+
+    memmove(buf, buf + 1, have);
+
+    return true;
 }
 
 
@@ -241,7 +306,6 @@ int celink_last_error(void)
 
 #define CELINK_GET_CMD_MAX  512
 #define CELINK_HEADER_MAX   128
-#define CELINK_CHUNK_SIZE   64
 
 bool celink_get(const char *url, char *body, size_t max_body,
                  int *out_status, unsigned timeout_iters)
@@ -273,13 +337,15 @@ bool celink_get(const char *url, char *body, size_t max_body,
     snprintf(command, sizeof(command), "get|%s|%u",
              url, (unsigned)(max_body - 1));
 
+    celink_drain_stale();
+
     if (!celink_send(command))
         return false;
 
-    /* Phase 1: accumulate the "status|<code>|<len>" or "error|<msg>"
-     * header line. Anything read past the newline in the same chunk
-     * belongs to the body, not the header — stash it in `pending` so
-     * phase 2 doesn't lose it. */
+    /* Phase 1: accumulate the leading code byte plus the
+     * "status|<code>|<len>" or "error|<msg>" header line. Anything read
+     * past the newline in the same chunk belongs to the body, not the
+     * header — stash it in `pending` so phase 2 doesn't lose it. */
     while (!header_done && idle < timeout_iters)
     {
         char chunk[CELINK_CHUNK_SIZE];
@@ -324,6 +390,20 @@ bool celink_get(const char *url, char *body, size_t max_body,
         body[max_body - 1] = '\0';
         return false;
     }
+
+    /* First byte should be the GET reply code — a mismatch means a
+     * stale reply from an earlier command slipped through. */
+    if (header_len == 0 ||
+        (unsigned char)header[0] != (unsigned char)CELINK_CODE_GET)
+    {
+        snprintf(body, max_body, "Protocol mismatch (got code %d).",
+                 header_len > 0 ? (unsigned char)header[0] : -1);
+        return false;
+    }
+
+    /* Everything after that leading byte is the actual header text. */
+    memmove(header, header + 1, header_len);
+    header_len -= 1;
 
     if (strncmp(header, "error|", 6) == 0)
     {
