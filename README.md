@@ -67,8 +67,8 @@ Current limits:
 - **Pico 2 W:** flash CircuitPython, install `adafruit_requests`,
   `adafruit_connection_manager` and `adafruit_ntp` (for example with
   `circup`), copy the files from `pico 2w/` onto the `CIRCUITPY` drive, and
-  add an `r1.pem` file with the root CA certificates you want trusted (one
-  certificate block after another).
+  edit `r1.pem` file with the root CA certificates you want trusted if you want more
+  available domains (one certificate block after another).
 - **Calculator:** build with the CE C/C++ Toolchain (a `makefile` is
   included; it needs the toolchain's `usbdrvce` and `srldrvce` libraries)
   and send the resulting `.8xp` to your calculator.
