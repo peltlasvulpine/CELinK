@@ -3,8 +3,7 @@
 # ----------------------------
 
 NAME = CELINK
-# Not yet
-#ICON = icon.png
+ICON = icon.png
 DESCRIPTION = "CELinK"
 COMPRESSED = YES
 
