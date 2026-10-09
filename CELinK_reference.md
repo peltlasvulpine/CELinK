@@ -11,7 +11,6 @@
 - [x] CE ↔ external device over USB
 - [x] External device ↔ Wi-Fi/network
 - [ ] Expose all of this through a clean C library
-- [ ] Eventually make it practical for normal CE users
 
 ---
 
@@ -29,19 +28,12 @@ TI-84 Plus CE
   Internet
 ```
 
-CELinK is the **abstraction layer** — not just "some USB code."
-
 The calculator is the USB host. It's what powers the link and initiates the
 connection, via `srldrvce` in host mode. The Pico 2 W is the USB device,
 running CircuitPython with `usb_cdc.data` enabled. They talk over a plain
 pipe-delimited text protocol (see below) rather than raw custom control
 transfers — simpler on both ends, and the calc's `srldrvce` and the Pico's
 `usb_cdc` are both just doing standard serial.
-
-An earlier prototype had the calculator acting as a USB *device* answering
-raw control transfers from a PC (the original proof of concept). That path
-is superseded now that the architecture is calc-as-host, it's no longer 
-what CELinK uses, just history.
 
 ---
 
@@ -61,26 +53,56 @@ The full command set below has been tested from a laptop debug script
 | `ping\|host\|timeout` | Ping by IP or hostname (DNS-resolved) | ✅ |
 | `help` | List available commands | ✅ |
 | `clear` | Send a blank/padding response | ✅ |
-| `get\|url\|maxbytes` | Fetch a URL (HTTP or HTTPS) via `adafruit_requests`, reply as `status\|code\|len` + raw body | ✅ |
+| `get\|url\|maxbytes\|timeout` | Fetch a URL (HTTP or HTTPS) via `adafruit_requests` with a `timeout` in seconds; reply as `status\|code\|len` + raw body, or `error\|message` | ✅ |
+
+### Reply framing
+
+Every command that sends a reply starts it with a single raw **code byte**
+saying which command it answers. That lets the calc reject a stale reply
+left over from an earlier command instead of showing it as the wrong answer
+(the old "PING shows the previous result" bug).
+
+| Code | Command |
+|---|---|
+| 1 | `wifiscan` |
+| 2 | `wifiisconnected` |
+| 3 | `ping` |
+| 4 | `get` |
+| 5 | `help` |
+
+Reply layout is `<code byte><text>`. For `get`, the text is
+`status|<http code>|<length>\n` followed by exactly `<length>` raw body
+bytes (not escaped), or `error|<message>\n` with no body on failure.
+
+`connect` and `disconnect` are fire-and-forget: no code, no reply — check
+`wifiisconnected` afterwards. `clear` also sets no code, so as it stands
+nothing is sent back for it.
 
 ### Calculator side — confirmed working on real hardware
 
 `src/celink.c` / `src/celink.h` implement the calc as a USB host via
 `srldrvce`. `src/main.c` is a demo/example program built on top of that
-library — it exists to prove the library actually works, not as the
+library. It exists to prove the library actually works, not as the
 deliverable itself; it sends the exact command set above and displays the
 replies. Tested end-to-end on real hardware: calculator ↔ Pico 2 W ↔
 Wi-Fi, all commands confirmed working from the calc's own menu.
+
+`celink_get()` sends its timeout to the Pico and waits in real seconds
+(via `clock()`) for the reply, plus a few seconds of margin so the Pico's
+own timeout error can arrive first. Other requests still use
+loop-iteration timeouts. If a `get` reply's header can't be parsed, the
+calc shows `Bad hdr len=<n>: <what it read>` so the bad line is visible.
 
 ---
 
 ## 📦 Repo
 
 - Repo: `peltlasvulpine/CELinK`, on `main`
-- `pc/celink.py` — early PC-side dev/test client from the original
-  device-mode prototype; not the current architecture's endpoint
-- `debugging/debugger.py` — current laptop-side debug tool, used to test
-  the Pico's `usb_cdc.data` protocol directly
+- `src/` — calculator side (`celink.c` / `celink.h` library, `main.c` demo)
+- `pico 2w/` — Pico side (`code.py`, `wifihelprs.py`, `boot.py`); the Pico
+  also needs an `r1.pem` CA bundle on `CIRCUITPY` (see Networking)
+- `debugging/debugger.py` — laptop-side debug tool, used to test the
+  Pico's `usb_cdc.data` protocol directly
 
 ---
 
@@ -93,12 +115,18 @@ bool celink_connected(void);
 
 bool celink_send(const char *command);
 int  celink_read(char *buf, size_t len);
-bool celink_request(const char *command, char *buf, size_t len,
-                     unsigned timeout_iters);
+bool celink_request(const char *command, int expected_code, char *buf,
+                     size_t len, unsigned timeout_iters);
+bool celink_get(const char *url, char *body, size_t max_body,
+                 int *out_status, unsigned timeout_s);
 
 int  celink_last_error(void);
 void celink_disconnect(void);
 ```
+
+`expected_code` is one of the `CELINK_CODE_*` constants in `celink.h`
+(`WIFISCAN`, `STATUS`, `PING`, `GET`, `HELP`); a reply carrying any other
+code fails with a "Protocol mismatch" message instead of being displayed.
 
 This is the actual, implemented calculator-side API — a thin, working layer
 over `srldrvce`, not yet the fully abstracted "hides the protocol
@@ -150,15 +178,16 @@ buy board → buy cable → flash CircuitPython → plug into CE → internet
 
 ---
 
-## 🚧 Protocol — Still Loose
+## 🚧 Protocol
 
 The pipe-delimited text protocol (`wifiscan`, `connect|ssid|pass`, etc.)
 works and is what's actually running, but it's informal:
 
 - [ ] No protocol version field
-- [ ] No structured error encoding (errors come back as plain text, if at
-      all)
-- [ ] No defined timeout/retry behavior beyond what each caller invents
+- [ ] No structured error encoding (`get` errors come back as
+      `error|message`; other commands return plain text, if anything)
+- [ ] Timeouts only partly defined: `get` carries an explicit timeout in
+      seconds, everything else still uses per-caller loop-iteration counts
 - [ ] No max packet size enforcement
 - [ ] No compatibility/version negotiation
 
@@ -167,20 +196,25 @@ on top of it.
 
 ---
 
-## 🌐 Networking — HTTP/HTTPS Working, POST Still Missing
+## 🌐 Networking
 
 - [x] Wi-Fi scanning
 - [x] Wi-Fi connect / disconnect / status
 - [x] DNS (hostname → IP resolution for `ping`)
 - [x] Ping
-- [x] HTTP requests (`get|url|maxbytes`)
+- [x] HTTP requests (`get|url|maxbytes|timeout`) — works for public sites
+      and for servers on the local network (tested against a LAN
+      `IP:port` server). A URL with no scheme gets `https://` if it
+      contains letters and `http://` if it's a bare IP.
 - [x] HTTPS — via a manually-curated multi-root CA bundle in `r1.pem`
       (loaded once with `ssl_context.load_verify_locations(cadata=...)`;
       covers Google's and DuckDuckGo's chains so far). Confirmed working
       against `https://www.google.com` and `https://lite.duckduckgo.com/lite/`
-      on real hardware.
+      on real hardware. Only sites whose root CA is in the bundle verify.
 - [ ] POST requests — needed for anything that submits a form (e.g. actual
       DDG Lite search, which posts `q` to `/lite/`)
+- [ ] Not possible on this hardware: WPA2-Enterprise / 802.1X networks
+      (the Pico 2 W's CYW43439 only does WPA2-PSK) and 5GHz
 - [ ] Structured network error handling — errors currently surface as
       whatever CircuitPython's bare `OSError`/mbedtls message happens to be,
       not always human-readable
@@ -215,5 +249,3 @@ calculator internet library**.
 - Free/open-source tooling where possible.
 - Community builds apps, CELinK provides the infrastructure.
 - Don't make application developers understand USB/Wi-Fi internals.
-
-> **CELinK isn't supposed to be a one-off program that happens to access Wi-Fi. It's supposed to become the reusable networking layer that CE applications can build on.**
