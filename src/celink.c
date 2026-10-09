@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 /*
  * CELinK — calculator side (USB HOST)
@@ -307,8 +308,23 @@ int celink_last_error(void)
 #define CELINK_GET_CMD_MAX  512
 #define CELINK_HEADER_MAX   128
 
+/* Real-time waits use clock() so they mean the same thing on every run,
+ * unlike loop-iteration counts. */
+#ifndef CLOCKS_PER_SEC
+#define CLOCKS_PER_SEC 32768
+#endif
+
+/* Extra seconds the calc waits beyond the timeout it told the Pico, so
+ * the Pico's own "error|timed out" reply has time to arrive before the
+ * calc gives up locally. */
+#define CELINK_GET_MARGIN_S    3
+
+/* Once the header has arrived, the body is just data streaming over USB —
+ * if this long passes with no new bytes, something is wrong. */
+#define CELINK_GET_BODY_IDLE_S 3
+
 bool celink_get(const char *url, char *body, size_t max_body,
-                 int *out_status, unsigned timeout_iters)
+                 int *out_status, unsigned timeout_s)
 {
     char command[CELINK_GET_CMD_MAX];
     char header[CELINK_HEADER_MAX];
@@ -316,7 +332,8 @@ bool celink_get(const char *url, char *body, size_t max_body,
     size_t pending_len = 0;
     size_t header_len = 0;
     size_t have = 0;
-    unsigned idle = 0;
+    clock_t started;
+    clock_t last_rx;
     bool header_done = false;
     long content_length = -1;
     char *bar1, *bar2;
@@ -332,10 +349,15 @@ bool celink_get(const char *url, char *body, size_t max_body,
     if (url == NULL || !celink_connected())
         return false;
 
+    if (timeout_s == 0)
+        timeout_s = 1;
+
     /* Cap the body at what we can actually hold so the Pico doesn't
-     * bother sending more than we can keep. */
-    snprintf(command, sizeof(command), "get|%s|%u",
-             url, (unsigned)(max_body - 1));
+     * bother sending more than we can keep, and tell it how long it may
+     * spend on the request so it always answers (success or error)
+     * before we stop listening. */
+    snprintf(command, sizeof(command), "get|%s|%u|%u",
+             url, (unsigned)(max_body - 1), timeout_s);
 
     celink_drain_stale();
 
@@ -346,7 +368,11 @@ bool celink_get(const char *url, char *body, size_t max_body,
      * "status|<code>|<len>" or "error|<msg>" header line. Anything read
      * past the newline in the same chunk belongs to the body, not the
      * header — stash it in `pending` so phase 2 doesn't lose it. */
-    while (!header_done && idle < timeout_iters)
+    started = clock();
+
+    while (!header_done &&
+           (clock() - started) <
+               (clock_t)(timeout_s + CELINK_GET_MARGIN_S) * CLOCKS_PER_SEC)
     {
         char chunk[CELINK_CHUNK_SIZE];
         int n, i;
@@ -355,12 +381,7 @@ bool celink_get(const char *url, char *body, size_t max_body,
         n = celink_read(chunk, sizeof(chunk));
 
         if (n <= 0)
-        {
-            idle++;
             continue;
-        }
-
-        idle = 0;
 
         for (i = 0; i < n; i++)
         {
@@ -418,8 +439,19 @@ bool celink_get(const char *url, char *body, size_t max_body,
 
     if (bar1 == NULL || bar2 == NULL)
     {
-        strncpy(body, "Bad response header.", max_body - 1);
-        body[max_body - 1] = '\0';
+        /* Diagnostic: show what the calc actually read as the header line
+         * (non-printable bytes shown as '~') so a bad reply can be
+         * identified from the screen alone. */
+        char shown[33];
+        size_t k;
+
+        for (k = 0; k < header_len && k < sizeof(shown) - 1; k++)
+            shown[k] = (header[k] >= 32 && header[k] < 127) ? header[k] : '~';
+
+        shown[k] = '\0';
+
+        snprintf(body, max_body, "Bad hdr len=%u: %s",
+                 (unsigned)header_len, shown);
         return false;
     }
 
@@ -440,9 +472,11 @@ bool celink_get(const char *url, char *body, size_t max_body,
     for (size_t i = 0; i < pending_len && have + 1 < max_body; i++)
         body[have++] = pending[i];
 
-    idle = 0;
+    last_rx = clock();
 
-    while ((long)have < content_length && idle < timeout_iters)
+    while ((long)have < content_length &&
+           (clock() - last_rx) <
+               (clock_t)CELINK_GET_BODY_IDLE_S * CLOCKS_PER_SEC)
     {
         char chunk[CELINK_CHUNK_SIZE];
         int n, i;
@@ -451,12 +485,9 @@ bool celink_get(const char *url, char *body, size_t max_body,
         n = celink_read(chunk, sizeof(chunk));
 
         if (n <= 0)
-        {
-            idle++;
             continue;
-        }
 
-        idle = 0;
+        last_rx = clock();
 
         for (i = 0; i < n && have + 1 < max_body; i++)
             body[have++] = chunk[i];

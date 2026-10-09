@@ -65,25 +65,28 @@ bool celink_request(const char *command, int expected_code, char *buf,
  * error has been recorded. */
 int celink_last_error(void);
 
-/* Fetches a URL through the Pico. Sends "get|<url>|<max_body-1>" so the
- * Pico knows the most it should bother sending, then reads back a
- * "status|<code>|<length>" header line followed by exactly <length> raw
- * body bytes (the body is NOT pipe-escaped — it's read as a known-length
- * blob, so it can contain any bytes except that an embedded '\0' will
- * still look like end-of-string once copied into `body`).
+/* Fetches a URL through the Pico. Sends
+ * "get|<url>|<max_body-1>|<timeout_s>" — the Pico is told the most body
+ * bytes it should bother sending AND the most seconds it may spend on the
+ * request, so it always answers (a result or an "error|..." line) in time.
+ * Then reads back a "status|<code>|<length>" header line followed by
+ * exactly <length> raw body bytes (the body is NOT pipe-escaped — it's
+ * read as a known-length blob, so it can contain any bytes except that an
+ * embedded '\0' will still look like end-of-string once copied into
+ * `body`).
  *
  * On success, copies up to max_body - 1 body bytes into `body`
  * (null-terminated) and sets *out_status to the HTTP status code, then
- * returns true. On failure (a "error|<message>" reply, a malformed
- * header, or a stall of more than timeout_iters idle iterations waiting
- * for the header or for body bytes), copies an error message into
- * `body` instead, sets *out_status to -1, and returns false.
+ * returns true. On failure (an "error|<message>" reply, a malformed
+ * header, or no reply at all), copies an error message into `body`
+ * instead, sets *out_status to -1, and returns false.
  *
- * timeout_iters is an *idle* timeout — it resets every time new bytes
- * arrive, so a slow-but-steady page transfer won't time out partway
- * through the way a fixed overall timeout would. */
+ * Waiting is measured in real seconds, not loop iterations: the calc
+ * waits up to timeout_s plus a few seconds of margin for the header (so
+ * the Pico's own timeout error can arrive first), then gives up on the
+ * body if it stalls for a few seconds with no new bytes. */
 bool celink_get(const char *url, char *body, size_t max_body,
-                 int *out_status, unsigned timeout_iters);
+                 int *out_status, unsigned timeout_s);
 
 /* Shuts down USB and forgets the connection. Safe to call even if never
  * connected. */

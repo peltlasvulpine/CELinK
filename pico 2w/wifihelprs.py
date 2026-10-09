@@ -1,6 +1,7 @@
 ## Using CircuitPython for the Raspberry Pi Pico 2W, Adafruit CircuitPython 10.3.0
 import wifi
 import math
+import re
 import time
 import ipaddress
 import board
@@ -108,13 +109,16 @@ def ping(ip, timeout):
         ip = resolve(ip)
     return wifi.radio.ping(ip, timeout=timeout)
 
-def geturl(url, maxbytes):
+def geturl(url, maxbytes, timeout):
     led.value = True
     try:
         if not url.startswith("http"):
-            url = "https://" + url
+            if bool(re.search(r'[a-zA-Z]', url)) == True:
+                url = "https://" + url
+            else:
+                url = "http://" + url
         print(f"getting {url}...")
-        with requests.get(url) as response:
+        with requests.get(url, timeout=timeout) as response:
             body = response.content[:maxbytes]
             header = f"status|{response.status_code}|{len(body)}\n"
     except Exception as e:

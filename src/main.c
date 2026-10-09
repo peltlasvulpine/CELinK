@@ -26,10 +26,10 @@
 #define TIMEOUT_MEDIUM 8000
 #define TIMEOUT_LONG   15000
 
-/* celink_get()'s timeout is an idle timeout (resets on any new bytes),
- * so this only needs to cover the gaps between packets, not the whole
- * page transfer. */
-#define TIMEOUT_GET    25000
+/* Seconds the Pico may spend on a fetch (DNS + TLS handshake + download).
+ * Sent to the Pico with the request; the calc waits a few seconds longer
+ * than this before giving up locally. */
+#define GET_TIMEOUT_S  15
 
 
 static void draw_menu(bool connected)
@@ -245,13 +245,8 @@ static void run_ping(void)
     }
 
     os_ClrHome();
-    os_PutStrFull("HOST:");
-    os_NewLine();
-    os_GetStringInput("", host, sizeof(host));
-    os_NewLine();
-    os_PutStrFull("TIMEOUT(s):");
-    os_NewLine();
-    os_GetStringInput("", timeout_str, sizeof(timeout_str));
+    os_GetStringInput("HOST/IP:", host, sizeof(host));
+    os_GetStringInput("TIMEOUT(s):", timeout_str, sizeof(timeout_str));
 
     snprintf(command, sizeof(command), "ping|%s|%s", host, timeout_str);
 
@@ -295,10 +290,9 @@ static void run_get(void)
     }
 
     os_ClrHome();
-    os_PutStrFull("URL:");
-    os_NewLine();
-    os_GetStringInput("", url, sizeof(url));
-    if (celink_get(url, body, sizeof(body), &status, TIMEOUT_GET))
+    os_GetStringInput("URL:", url, sizeof(url));
+
+    if (celink_get(url, body, sizeof(body), &status, GET_TIMEOUT_S))
     {
         /* BODY_SIZE is a lot smaller than most real pages, so this is
          * just enough to prove the fetch actually worked — not a
