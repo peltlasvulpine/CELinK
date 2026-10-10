@@ -10,7 +10,8 @@
  * The calculator acts as the USB HOST and supplies power. It looks for a
  * connected USB CDC serial device (the CELinK Pico 2 W running CircuitPython
  * with usb_cdc.data enabled) and talks to it using a simple pipe-delimited
- * text protocol, e.g. "wifiscan", "connect|SSID|PASSWORD", "ping|IP|3".
+ * text protocol, e.g. "wifiscan", "connect|SSID|PASSWORD", "ping|IP|3",
+ * "get|URL|max|timeout" and "post|URL|max|timeout|type|len" (+ raw body).
  *
  * See wifihelprs.py / code.py on the Pico side for the exact command set.
  */
@@ -59,7 +60,7 @@ bool celink_request(const char *command, int expected_code, char *buf,
 #define CELINK_CODE_STATUS   2
 #define CELINK_CODE_PING     3
 #define CELINK_CODE_GET      4
-#define CELINK_CODE_HELP     5
+#define CELINK_CODE_POST     4  /* post replies reuse the get reply code */
 
 /* Last low-level usbdrvce/srldrvce error code, for debugging. 0 means no
  * error has been recorded. */
@@ -87,6 +88,33 @@ int celink_last_error(void);
  * body if it stalls for a few seconds with no new bytes. */
 bool celink_get(const char *url, char *body, size_t max_body,
                  int *out_status, unsigned timeout_s);
+
+/* Largest request body celink_post() will send. The Pico enforces the same
+ * limit. */
+#define CELINK_POST_MAX_BODY 512
+
+/* POSTs `post_len` raw bytes (`post_body`) to a URL through the Pico, with
+ * the given Content-Type (e.g. "application/x-www-form-urlencoded"). Sends
+ * "post|<url>|<max_response-1>|<timeout_s>|<content_type>|<post_len>\n"
+ * followed by exactly post_len raw bytes — the body is not escaped, so it
+ * can contain '|' and newlines. `url` and `content_type` may not contain
+ * '|'. post_len is limited to CELINK_POST_MAX_BODY.
+ *
+ * The reply is read exactly like celink_get(): on success the response body
+ * (null-terminated, at most max_response - 1 bytes) is copied into
+ * `response`, *out_status is the HTTP status, and it returns true. On
+ * failure `response` holds an error message, *out_status is -1, and it
+ * returns false. */
+bool celink_post(const char *url, const char *content_type,
+                 const void *post_body, size_t post_len,
+                 char *response, size_t max_response,
+                 int *out_status, unsigned timeout_s);
+
+/* Percent-encodes `in` for a form body or query string: letters, digits
+ * and - _ . ~ are kept, a space becomes '+', everything else becomes %XX.
+ * Writes a null-terminated result into `out`. Returns the encoded length,
+ * or -1 if `out` is too small (out is then left empty). */
+int celink_url_encode(const char *in, char *out, size_t out_len);
 
 /* Shuts down USB and forgets the connection. Safe to call even if never
  * connected. */

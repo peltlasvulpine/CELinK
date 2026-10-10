@@ -4,6 +4,7 @@
 #include <srldrvce.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -307,6 +308,7 @@ int celink_last_error(void)
 
 #define CELINK_GET_CMD_MAX  512
 #define CELINK_HEADER_MAX   128
+#define CELINK_POST_HDR_MAX 640
 
 /* Real-time waits use clock() so they mean the same thing on every run,
  * unlike loop-iteration counts. */
@@ -323,10 +325,59 @@ int celink_last_error(void)
  * if this long passes with no new bytes, something is wrong. */
 #define CELINK_GET_BODY_IDLE_S 3
 
-bool celink_get(const char *url, char *body, size_t max_body,
-                 int *out_status, unsigned timeout_s)
+/* Writes all `len` bytes, a small piece at a time, so a payload bigger than
+ * the serial buffer is never silently cut short. Gives up if nothing at all
+ * can be written for CELINK_WRITE_STALL_S seconds. */
+#define CELINK_WRITE_STALL_S 3
+
+static bool celink_write_all(const void *data, size_t len)
 {
-    char command[CELINK_GET_CMD_MAX];
+    const uint8_t *p = (const uint8_t *)data;
+    size_t sent = 0;
+    clock_t last_progress = clock();
+
+    if (!serial_open)
+        return false;
+
+    while (sent < len)
+    {
+        size_t chunk = len - sent;
+        int n;
+
+        if (chunk > CELINK_CHUNK_SIZE)
+            chunk = CELINK_CHUNK_SIZE;
+
+        n = srl_Write(&srl_dev, p + sent, chunk);
+        celink_process();
+
+        if (n < 0)
+        {
+            last_error = n;
+            return false;
+        }
+
+        if (n > 0)
+        {
+            sent += (size_t)n;
+            last_progress = clock();
+        }
+        else if ((clock() - last_progress) >
+                 (clock_t)CELINK_WRITE_STALL_S * CLOCKS_PER_SEC)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+/* Reads the reply to a get/post-style command: one leading code byte,
+ * then "status|<code>|<len>\n" + <len> raw body bytes, or "error|<msg>\n".
+ * Shared by celink_get() and celink_post(). */
+static bool celink_read_reply(int expected_code, char *body, size_t max_body,
+                               int *out_status, unsigned timeout_s)
+{
     char header[CELINK_HEADER_MAX];
     char pending[CELINK_CHUNK_SIZE];
     size_t pending_len = 0;
@@ -337,32 +388,6 @@ bool celink_get(const char *url, char *body, size_t max_body,
     bool header_done = false;
     long content_length = -1;
     char *bar1, *bar2;
-
-    if (out_status != NULL)
-        *out_status = -1;
-
-    if (body == NULL || max_body == 0)
-        return false;
-
-    body[0] = '\0';
-
-    if (url == NULL || !celink_connected())
-        return false;
-
-    if (timeout_s == 0)
-        timeout_s = 1;
-
-    /* Cap the body at what we can actually hold so the Pico doesn't
-     * bother sending more than we can keep, and tell it how long it may
-     * spend on the request so it always answers (success or error)
-     * before we stop listening. */
-    snprintf(command, sizeof(command), "get|%s|%u|%u",
-             url, (unsigned)(max_body - 1), timeout_s);
-
-    celink_drain_stale();
-
-    if (!celink_send(command))
-        return false;
 
     /* Phase 1: accumulate the leading code byte plus the
      * "status|<code>|<len>" or "error|<msg>" header line. Anything read
@@ -412,13 +437,14 @@ bool celink_get(const char *url, char *body, size_t max_body,
         return false;
     }
 
-    /* First byte should be the GET reply code — a mismatch means a
+    /* First byte should be this command's reply code — a mismatch means a
      * stale reply from an earlier command slipped through. */
     if (header_len == 0 ||
-        (unsigned char)header[0] != (unsigned char)CELINK_CODE_GET)
+        (unsigned char)header[0] != (unsigned char)expected_code)
     {
-        snprintf(body, max_body, "Protocol mismatch (got code %d).",
-                 header_len > 0 ? (unsigned char)header[0] : -1);
+        snprintf(body, max_body, "Protocol mismatch (got code %d, expected %d).",
+                 header_len > 0 ? (unsigned char)header[0] : -1,
+                 expected_code);
         return false;
     }
 
@@ -439,19 +465,8 @@ bool celink_get(const char *url, char *body, size_t max_body,
 
     if (bar1 == NULL || bar2 == NULL)
     {
-        /* Diagnostic: show what the calc actually read as the header line
-         * (non-printable bytes shown as '~') so a bad reply can be
-         * identified from the screen alone. */
-        char shown[33];
-        size_t k;
-
-        for (k = 0; k < header_len && k < sizeof(shown) - 1; k++)
-            shown[k] = (header[k] >= 32 && header[k] < 127) ? header[k] : '~';
-
-        shown[k] = '\0';
-
-        snprintf(body, max_body, "Bad hdr len=%u: %s",
-                 (unsigned)header_len, shown);
+        snprintf(body, max_body, "Bad hdr len=%u: %.40s",
+                 (unsigned)header_len, header);
         return false;
     }
 
@@ -496,6 +511,154 @@ bool celink_get(const char *url, char *body, size_t max_body,
     body[have] = '\0';
 
     return (long)have >= content_length || have + 1 >= max_body;
+}
+
+
+bool celink_get(const char *url, char *body, size_t max_body,
+                 int *out_status, unsigned timeout_s)
+{
+    char command[CELINK_GET_CMD_MAX];
+
+    if (out_status != NULL)
+        *out_status = -1;
+
+    if (body == NULL || max_body == 0)
+        return false;
+
+    body[0] = '\0';
+
+    if (url == NULL || !celink_connected())
+        return false;
+
+    if (timeout_s == 0)
+        timeout_s = 1;
+
+    /* Cap the body at what we can actually hold so the Pico doesn't
+     * bother sending more than we can keep, and tell it how long it may
+     * spend on the request so it always answers (success or error)
+     * before we stop listening. */
+    snprintf(command, sizeof(command), "get|%s|%u|%u",
+             url, (unsigned)(max_body - 1), timeout_s);
+
+    celink_drain_stale();
+
+    if (!celink_send(command))
+        return false;
+
+    return celink_read_reply(CELINK_CODE_GET, body, max_body, out_status,
+                             timeout_s);
+}
+
+
+bool celink_post(const char *url, const char *content_type,
+                 const void *post_body, size_t post_len,
+                 char *response, size_t max_response,
+                 int *out_status, unsigned timeout_s)
+{
+    char header[CELINK_POST_HDR_MAX];
+    int n;
+
+    if (out_status != NULL)
+        *out_status = -1;
+
+    if (response == NULL || max_response == 0)
+        return false;
+
+    response[0] = '\0';
+
+    if (url == NULL || content_type == NULL || !celink_connected() ||
+        (post_body == NULL && post_len > 0))
+        return false;
+
+    if (post_len > CELINK_POST_MAX_BODY)
+    {
+        snprintf(response, max_response, "Body too large (max %d).",
+                 CELINK_POST_MAX_BODY);
+        return false;
+    }
+
+    /* '|' separates header fields, so it can't appear in these two. */
+    if (strchr(url, '|') != NULL || strchr(content_type, '|') != NULL)
+    {
+        strncpy(response, "URL/type can't contain '|'.", max_response - 1);
+        response[max_response - 1] = '\0';
+        return false;
+    }
+
+    if (timeout_s == 0)
+        timeout_s = 1;
+
+    n = snprintf(header, sizeof(header), "post|%s|%u|%u|%s|%u\n",
+                 url, (unsigned)(max_response - 1), timeout_s,
+                 content_type, (unsigned)post_len);
+
+    if (n < 0 || (size_t)n >= sizeof(header))
+    {
+        strncpy(response, "URL too long.", max_response - 1);
+        response[max_response - 1] = '\0';
+        return false;
+    }
+
+    celink_drain_stale();
+
+    /* Header line first (ends in '\n'), then exactly post_len raw bytes. */
+    if (!celink_write_all(header, (size_t)n) ||
+        !celink_write_all(post_body, post_len))
+    {
+        strncpy(response, "Send failed.", max_response - 1);
+        response[max_response - 1] = '\0';
+        return false;
+    }
+
+    return celink_read_reply(CELINK_CODE_POST, response, max_response,
+                             out_status, timeout_s);
+}
+
+
+int celink_url_encode(const char *in, char *out, size_t out_len)
+{
+    static const char hex[] = "0123456789ABCDEF";
+    size_t o = 0;
+
+    if (out == NULL || out_len == 0)
+        return -1;
+
+    for (; in != NULL && *in != '\0'; in++)
+    {
+        unsigned char c = (unsigned char)*in;
+
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+            (c >= '0' && c <= '9') || c == '-' || c == '_' ||
+            c == '.' || c == '~')
+        {
+            if (o + 1 >= out_len)
+                break;
+            out[o++] = (char)c;
+        }
+        else if (c == ' ')
+        {
+            if (o + 1 >= out_len)
+                break;
+            out[o++] = '+';
+        }
+        else
+        {
+            if (o + 3 >= out_len)
+                break;
+            out[o++] = '%';
+            out[o++] = hex[c >> 4];
+            out[o++] = hex[c & 15];
+        }
+    }
+
+    if (in != NULL && *in != '\0')
+    {
+        out[0] = '\0';
+        return -1;
+    }
+
+    out[o] = '\0';
+    return (int)o;
 }
 
 

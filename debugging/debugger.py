@@ -5,6 +5,6 @@ towrite = ""
 
 while towrite != "exit":
     towrite = input("To send?")
-    port.write(towrite.encode())
+    port.write(towrite.replace("\\n", "\n").encode())
     print("Sent!")
 port.close()

@@ -19,6 +19,14 @@
 #define FIELD_SIZE    64
 #define BODY_SIZE     2048
 
+/* Search demo: POST a form to DuckDuckGo Lite, then pull the result titles
+ * out of the HTML. The results sit well past the page's header, so this
+ * buffer is bigger than BODY_SIZE. */
+#define SEARCH_URL          "https://lite.duckduckgo.com/lite/"
+#define SEARCH_BODY_SIZE    12288
+#define SEARCH_MAX_RESULTS  5
+#define RESULT_TITLE_SIZE   60
+
 /* Rough iteration-based timeouts for celink_request(). These are loop
  * counts, not calibrated real time — a Wi-Fi scan takes longer than a
  * status check, so it gets a bigger budget. */
@@ -47,7 +55,7 @@ static void draw_menu(bool connected)
     os_NewLine();
     os_PutStrFull("3:Discon 4:Status");
     os_NewLine();
-    os_PutStrFull("5:Ping  6:Help");
+    os_PutStrFull("5:Ping  6:Search");
     os_NewLine();
     os_PutStrFull("7:Get");
     os_NewLine();
@@ -258,21 +266,145 @@ static void run_ping(void)
 }
 
 
-static void run_help(void)
+/* Copies the next HTML entity's character and advances *pp past it. Only
+ * the handful DuckDuckGo actually uses in titles. */
+static char take_entity(const char **pp)
 {
-    char response[RESPONSE_SIZE];
+    const char *p = *pp;
+
+    if (strncmp(p, "&amp;", 5) == 0)  { *pp = p + 5; return '&'; }
+    if (strncmp(p, "&quot;", 6) == 0) { *pp = p + 6; return '"'; }
+    if (strncmp(p, "&#x27;", 6) == 0) { *pp = p + 6; return '\''; }
+    if (strncmp(p, "&nbsp;", 6) == 0) { *pp = p + 6; return ' '; }
+    if (strncmp(p, "&lt;", 4) == 0)   { *pp = p + 4; return '<'; }
+    if (strncmp(p, "&gt;", 4) == 0)   { *pp = p + 4; return '>'; }
+
+    *pp = p + 1;
+    return '&';
+}
+
+
+/* Finds each <a ... class='result-link'>TITLE</a> in a DuckDuckGo Lite
+ * results page and copies the TITLE text (tags stripped, common entities
+ * decoded) into titles[]. Returns how many were found. */
+static int parse_results(const char *html,
+                         char titles[][RESULT_TITLE_SIZE], int max)
+{
+    static const char marker[] = "class='result-link'>";
+    const char *p = html;
+    int n = 0;
+
+    while (n < max && (p = strstr(p, marker)) != NULL)
+    {
+        size_t d = 0;
+
+        p += sizeof(marker) - 1;
+
+        while (*p != '\0' && d + 1 < RESULT_TITLE_SIZE)
+        {
+            if (*p == '<')
+            {
+                if (strncmp(p, "</a>", 4) == 0)
+                    break;
+
+                while (*p != '\0' && *p != '>')
+                    p++;
+
+                if (*p != '\0')
+                    p++;
+
+                continue;
+            }
+
+            if (*p == '&')
+                titles[n][d++] = take_entity(&p);
+            else
+                titles[n][d++] = *p++;
+        }
+
+        titles[n][d] = '\0';
+        n++;
+    }
+
+    return n;
+}
+
+
+static void run_search(void)
+{
+    char query[FIELD_SIZE];
+    char form[2 + 3 * FIELD_SIZE + 1];
+    static char page[SEARCH_BODY_SIZE];
+    char titles[SEARCH_MAX_RESULTS][RESULT_TITLE_SIZE];
+    char line[RESULT_TITLE_SIZE + 16];
+    char label[32];
+    int status = -1;
+    int found, i;
+    int rows = 0;
 
     if (!celink_connected())
     {
-        show_result("HELP", "Not connected to Pico.");
+        show_result("SEARCH", "Not connected to Pico.");
         return;
     }
 
-    if (celink_request("help", CELINK_CODE_HELP, response, sizeof(response),
-                        TIMEOUT_SHORT))
-        show_result("HELP", response);
-    else
-        show_result("HELP", response[0] != '\0' ? response : "Timed out.");
+    os_ClrHome();
+    os_GetStringInput("SEARCH:", query, sizeof(query));
+
+    if (query[0] == '\0')
+        return;
+
+    /* Form body: q=<url-encoded query> */
+    strcpy(form, "q=");
+
+    if (celink_url_encode(query, form + 2, sizeof(form) - 2) < 0)
+    {
+        show_result("SEARCH", "Query too long.");
+        return;
+    }
+
+    os_ClrHome();
+    os_PutStrFull("Searching...");
+
+    if (!celink_post(SEARCH_URL, "application/x-www-form-urlencoded",
+                     form, strlen(form), page, sizeof(page), &status,
+                     GET_TIMEOUT_S))
+    {
+        snprintf(label, sizeof(label), "SEARCH FAILED (%d)", status);
+        show_result(label, page);
+        return;
+    }
+
+    found = parse_results(page, titles, SEARCH_MAX_RESULTS);
+
+    if (found == 0)
+    {
+        snprintf(label, sizeof(label), "SEARCH %d", status);
+        show_result(label, "No results found.");
+        return;
+    }
+
+    os_ClrHome();
+
+    for (i = 0; i < found; i++)
+    {
+        int need;
+
+        snprintf(line, sizeof(line), "%d.%s", i + 1, titles[i]);
+        need = ((int)strlen(line) + 25) / 26;
+
+        if (i > 0 && rows + need > 8)
+            break;
+
+        os_PutStrFull(line);
+        os_NewLine();
+        rows += need;
+    }
+
+    os_NewLine();
+    os_PutStrFull("Press any key...");
+
+    wait_for_any_key();
 }
 
 
@@ -359,7 +491,7 @@ int main(void)
         }
         else if (kb_IsDown(kb_Key6))
         {
-            run_help();
+            run_search();
             draw_menu(celink_connected());
         }
         else if (kb_IsDown(kb_Key7))

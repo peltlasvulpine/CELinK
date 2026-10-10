@@ -90,8 +90,6 @@ def connect(ssid, passwd):
     led.value = False
     print(f"connected to {ssid}")
 
-
-
 def disconnect():
     print("disconnecting...")
     led.value = True
@@ -118,7 +116,7 @@ def geturl(url, maxbytes, timeout):
             else:
                 url = "http://" + url
         print(f"getting {url}...")
-        with requests.get(url, timeout=timeout) as response:
+        with requests.get(url, timeout=timeout, allow_redirects=True) as response:
             body = response.content[:maxbytes]
             header = f"status|{response.status_code}|{len(body)}\n"
     except Exception as e:
@@ -127,5 +125,25 @@ def geturl(url, maxbytes, timeout):
     led.value = False
     return header, body
 
-def help():
-    return "wifiscan|connect|disconnect|wifiisconnected|ping|get|clear"
+### example:
+# post|https://lite.duckduckgo.com/lite/|2047|15|application/x-www-form-urlencoded|13\nq=hello+world
+# format:
+# post|<url>|<max_response>|<timeout_s>|<content_type>|<body_len>\n<body_len raw bytes>
+
+def posturl(url, maxbytes, timeout, content_type, body_bytes):
+    led.value = True
+    try:
+        if not url.startswith("http"):
+            if bool(re.search(r'[a-zA-Z]', url)) == True:
+                url = "https://" + url
+            else:
+                url = "http://" + url
+        print(f"posting to {url}...")
+        with requests.post(url, data=body_bytes, headers={"Content-Type": content_type},timeout=timeout, allow_redirects=True) as response:
+            body = response.content[:maxbytes]
+            header = f"status|{response.status_code}|{len(body)}\n"
+    except Exception as e:
+        header = f"error|{str(e)[:80]}\n"
+        body = b""
+    led.value = False
+    return header, body
